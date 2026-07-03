@@ -1,6 +1,7 @@
 import "server-only";
 
 import { auth } from "@clerk/nextjs/server";
+import { normalizePhone } from "@/lib/phone";
 import { getSessionProfile } from "@/lib/auth/session";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
@@ -101,7 +102,7 @@ export async function createOrganizationWithOwner(
     organization_id: organizationId,
     role: "owner",
     full_name: fullName,
-    phone: input.phone?.trim() || null,
+    phone: normalizePhone(input.phone),
   });
 
   if (profileError) {

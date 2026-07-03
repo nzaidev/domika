@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/domika/AppWidgets";
 import styles from "@/components/domika/domika-app.module.css";
@@ -38,9 +39,14 @@ export default async function LeadsPage() {
         title="Embudo de prospectos con contactos en vivo"
         description="Gestiona cada contacto desde su entrada por WhatsApp hasta la visita, oferta y cierre."
         actions={
-          <span className={styles.pill}>
-            {board.totalLeads} prospecto{board.totalLeads === 1 ? "" : "s"}
-          </span>
+          <>
+            <span className={styles.pill}>
+              {board.totalLeads} prospecto{board.totalLeads === 1 ? "" : "s"}
+            </span>
+            <Link className={styles.secondaryButton} href="/leads/import">
+              Importar contactos
+            </Link>
+          </>
         }
       />
 

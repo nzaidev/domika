@@ -1,5 +1,6 @@
 import "server-only";
 
+import { normalizePhone } from "@/lib/phone";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 const GRAPH_API_BASE = "https://graph.facebook.com/v21.0";
@@ -70,7 +71,7 @@ async function fetchLeadFieldData(
           .join(" ") ||
           null),
       email: fields.get("email") ?? null,
-      phone: fields.get("phone_number") ?? fields.get("phone") ?? null,
+      phone: normalizePhone(fields.get("phone_number") ?? fields.get("phone")),
     };
   } catch {
     return null;

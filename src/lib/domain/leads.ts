@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { LeadRow, PipelineStageRow } from "@/lib/database.types";
+import { normalizePhone } from "@/lib/phone";
 import { getSessionProfile } from "@/lib/auth/session";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
@@ -121,7 +122,7 @@ export async function createLead(
       stage_id: firstStage?.id ?? null,
       assigned_to: session.profile.id,
       full_name: fullName,
-      phone: input.phone?.trim() || null,
+      phone: normalizePhone(input.phone),
       email: input.email?.trim() || null,
       desired_zone: input.desiredZone?.trim() || null,
       notes: input.notes?.trim() || null,

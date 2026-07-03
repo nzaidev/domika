@@ -1,5 +1,6 @@
 import "server-only";
 
+import { normalizePhone } from "@/lib/phone";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 // Shapes from the Meta Cloud API webhook payload (WhatsApp Business Platform).
@@ -149,7 +150,7 @@ async function ingestMessage(
   },
 ): Promise<IngestOutcome> {
   const { organizationId, message, contactName } = input;
-  const contactPhone = message.from;
+  const contactPhone = normalizePhone(message.from) ?? message.from;
 
   const { data: existing } = await supabase
     .from("whatsapp_messages")
