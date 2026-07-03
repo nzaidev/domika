@@ -1232,3 +1232,105 @@ a.propertyCard:hover {
   gap: 12px;
   padding: 14px;
 }
+
+.stagedGrid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+
+.stagedItem {
+  background: #ffffff;
+  border: 1px solid var(--app-soft);
+  border-radius: 8px;
+  cursor: grab;
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 8px;
+}
+
+.stagedThumb {
+  aspect-ratio: 16 / 10;
+  border-radius: 6px;
+  cursor: zoom-in;
+  object-fit: cover;
+  width: 100%;
+}
+
+.stagedCaption {
+  color: var(--app-muted);
+  font-size: 12px;
+}
+
+.stagedActions {
+  display: flex;
+  gap: 4px;
+}
+
+.galleryButton {
+  background: none;
+  border: none;
+  cursor: zoom-in;
+  padding: 0;
+}
+
+.lightboxOverlay {
+  align-items: center;
+  background: rgba(4, 17, 42, 0.92);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  position: fixed;
+  z-index: 100;
+}
+
+.lightboxImage {
+  border-radius: 8px;
+  max-height: 90vh;
+  max-width: 92vw;
+  object-fit: contain;
+}
+
+.lightboxClose,
+.lightboxNav {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  border-radius: 999px;
+  color: #ffffff;
+  cursor: pointer;
+  display: flex;
+  font-size: 26px;
+  height: 44px;
+  justify-content: center;
+  position: fixed;
+  width: 44px;
+}
+
+.lightboxClose {
+  right: 18px;
+  top: 18px;
+}
+
+.lightboxNav {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.lightboxPrev {
+  left: 18px;
+}
+
+.lightboxNext {
+  right: 18px;
+}
+
+.lightboxCounter {
+  bottom: 18px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  left: 50%;
+  position: fixed;
+  transform: translateX(-50%);
+}

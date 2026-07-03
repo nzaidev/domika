@@ -159,17 +159,19 @@ Same shape as WhatsApp: requires a `meta_lead_pages` row (`page_id` → org). Wi
 
 Full CRUD with private owner data and a photo pipeline that normalizes images on ingest (EXIF rotation, max 1600px, WebP) via sharp, stored in the `property-media` bucket under `{org}/{property}/` paths.
 
-**Test — create and manage a property:**
+**Test — create a property with photos in one step:**
 1. `/properties` → "Nueva propiedad" → fill the form (title required; type, operation, estado, precio USD/BOB, ciudad/zona/dirección, dormitorios/baños/parqueos, superficies, amenidades separadas por coma, situación legal, video/tour URLs).
 2. Owner section (amber panel): nombre, teléfono, email, notas — the owner phone gets +591 normalization like leads.
-3. "Crear propiedad" → you land on `/properties/{id}` with specs rail, description, amenity chips, and the owner panel marked "solo visible para tu organización".
+3. Photo section: select up to **20 images** (JPG/PNG/WebP/HEIC) → previews appear; the first is marked "Portada". Selecting more than 20 warns and keeps the first 20.
+4. Rearrange: **drag a thumbnail onto another** to reorder, or use ↑/↓; ✕ removes; click a thumbnail for **inline zoom** (lightbox with ←/→ navigation, Esc closes).
+5. "Crear propiedad y subir N fotos" → progress shows "Subiendo foto X de N…", each image is converted to WebP (máx. 1600px) server-side, then you land on `/properties/{id}`. If some photos fail, you land on the edit page with per-file errors so you can retry.
 
-**Test — photos:**
-1. On the detail page → "Editar ficha" → the right panel is the photo manager.
-2. Upload one or several images (JPG/PNG/WebP/HEIC, up to 15 MB each) → thumbnails appear; the first photo becomes the cover automatically.
-3. Verify normalization: open an uploaded photo's URL — it's a `.webp` capped at 1600px regardless of the original size/format.
-4. "Hacer portada" on another photo → the list card on `/properties` switches its cover. Reorder with ↑/↓; "Eliminar" removes the row *and* the storage object.
-5. Invalid file (e.g. a PDF renamed .jpg or a 20 MB image) → a per-file error message, other files still upload.
+**Test — photos after creation:**
+1. On the detail page → "Editar ficha" → the right panel is the photo manager (same 20-photo cap, enforced server-side).
+2. Verify normalization: open an uploaded photo's URL — it's a `.webp` capped at 1600px regardless of the original size/format.
+3. "Hacer portada" on another photo → the list card on `/properties` switches its cover. Reorder with ↑/↓; "Eliminar" removes the row *and* the storage object.
+4. Invalid file (e.g. a PDF renamed .jpg or a 20 MB image) → a per-file error message, other files still upload.
+5. On the detail page, click any gallery photo → inline zoom lightbox with keyboard navigation.
 
 **Test — list, filters, dashboard:**
 1. `/properties` → search by title/city/zone/address; filter by estado, operación, tipo; combined filters live in the URL; "Limpiar" resets.

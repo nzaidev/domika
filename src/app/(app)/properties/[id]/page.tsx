@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { PageHeader } from "@/components/domika/AppWidgets";
@@ -9,6 +8,7 @@ import {
   OPERATION_LABELS,
   STATUS_LABELS,
 } from "../labels";
+import { PropertyGallery } from "./PropertyGallery";
 
 export const dynamic = "force-dynamic";
 
@@ -122,21 +122,15 @@ export default async function PropertyDetailPage({
               </div>
             </div>
             {media.length > 0 ? (
-              <div className={styles.galleryGrid}>
-                {media.map((item) =>
-                  item.public_url ? (
-                    <Image
-                      key={item.id}
-                      src={item.public_url}
-                      alt={item.alt_text ?? property.title}
-                      className={styles.galleryImage}
-                      width={800}
-                      height={450}
-                      sizes="(max-width: 820px) 100vw, 45vw"
-                    />
-                  ) : null,
-                )}
-              </div>
+              <PropertyGallery
+                images={media
+                  .filter((item) => item.public_url)
+                  .map((item) => ({
+                    id: item.id,
+                    src: item.public_url as string,
+                    alt: item.alt_text ?? property.title,
+                  }))}
+              />
             ) : (
               <p className={styles.mutedText}>
                 Sin fotos todavía. Agrégalas desde “Editar ficha”.

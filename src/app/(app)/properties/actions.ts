@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import type { PropertyRow } from "@/lib/database.types";
 import {
   createProperty,
@@ -14,6 +13,9 @@ import {
 
 export type PropertyFormState = {
   error: string | null;
+  // Set on success; the client uploads staged photos (create flow) and then
+  // navigates to the property page.
+  propertyId: string | null;
 };
 
 function numberOrNull(value: FormDataEntryValue | null): number | null {
@@ -84,14 +86,14 @@ export async function savePropertyAction(
     : await createProperty(input);
 
   if (result.ok === false) {
-    return { error: result.error };
+    return { error: result.error, propertyId: null };
   }
 
   revalidatePath("/properties");
   revalidatePath(`/properties/${result.propertyId}`);
   revalidatePath("/dashboard");
 
-  redirect(`/properties/${result.propertyId}`);
+  return { error: null, propertyId: result.propertyId };
 }
 
 export async function setCoverAction(formData: FormData) {

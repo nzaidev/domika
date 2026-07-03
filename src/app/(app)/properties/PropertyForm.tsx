@@ -1,11 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
+import { useRouter } from "next/navigation";
+import { useActionState, useEffect, useRef, useState } from "react";
 import styles from "@/components/domika/domika-app.module.css";
 import type { PropertyRow } from "@/lib/database.types";
 import { savePropertyAction, type PropertyFormState } from "./actions";
+import { StagedPhotos, type StagedPhoto } from "./StagedPhotos";
 
-const initialState: PropertyFormState = { error: null };
+const initialState: PropertyFormState = { error: null, propertyId: null };
 
 const PROPERTY_TYPES = [
   "Casa",
@@ -26,10 +28,65 @@ const STATUS_OPTIONS: Array<{ value: PropertyRow["status"]; label: string }> = [
 ];
 
 export function PropertyForm({ property }: { property?: PropertyRow }) {
+  const router = useRouter();
   const [state, formAction, pending] = useActionState(
     savePropertyAction,
     initialState,
   );
+  const [staged, setStaged] = useState<StagedPhoto[]>([]);
+  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
+  const [uploadErrors, setUploadErrors] = useState<string[]>([]);
+  const finishedRef = useRef(false);
+
+  // After a successful save, push staged photos through the normalization
+  // pipeline one request per file (keeps each request small), then navigate.
+  useEffect(() => {
+    if (!state.propertyId || finishedRef.current) {
+      return;
+    }
+    finishedRef.current = true;
+
+    const propertyId = state.propertyId;
+
+    void (async () => {
+      const errors: string[] = [];
+
+      for (let index = 0; index < staged.length; index += 1) {
+        setUploadStatus(`Subiendo foto ${index + 1} de ${staged.length}…`);
+        const body = new FormData();
+        body.append("files", staged[index].file);
+
+        try {
+          const response = await fetch(
+            `/api/properties/${propertyId}/media`,
+            { method: "POST", body },
+          );
+          const payload = (await response.json()) as {
+            errors?: string[];
+            error?: string;
+          };
+          errors.push(...(payload.errors ?? []));
+          if (payload.error) {
+            errors.push(payload.error);
+          }
+        } catch {
+          errors.push(`${staged[index].file.name}: fallo de red al subir.`);
+        }
+      }
+
+      if (errors.length > 0) {
+        // Land on the edit page so the user can retry the failed photos.
+        setUploadErrors(errors);
+        setUploadStatus(null);
+        router.push(`/properties/${propertyId}/edit`);
+      } else {
+        router.push(`/properties/${propertyId}`);
+      }
+      router.refresh();
+    })();
+  }, [state.propertyId, staged, router]);
+
+  const busy = pending || uploadStatus !== null;
 
   const amenities = Array.isArray(property?.amenities)
     ? (property?.amenities as string[]).join(", ")
@@ -318,14 +375,28 @@ export function PropertyForm({ property }: { property?: PropertyRow }) {
         </label>
       </div>
 
-      {state.error ? <p className={styles.formError}>{state.error}</p> : null}
+      {!property ? (
+        <StagedPhotos photos={staged} onChange={setStaged} disabled={busy} />
+      ) : null}
 
-      <button className={styles.primaryButton} type="submit" disabled={pending}>
-        {pending
-          ? "Guardando…"
-          : property
-            ? "Guardar cambios"
-            : "Crear propiedad"}
+      {state.error ? <p className={styles.formError}>{state.error}</p> : null}
+      {uploadStatus ? <p className={styles.mutedText}>{uploadStatus}</p> : null}
+      {uploadErrors.map((error) => (
+        <p className={styles.formError} key={error}>
+          {error}
+        </p>
+      ))}
+
+      <button className={styles.primaryButton} type="submit" disabled={busy}>
+        {uploadStatus
+          ? uploadStatus
+          : pending
+            ? "Guardando…"
+            : property
+              ? "Guardar cambios"
+              : staged.length > 0
+                ? `Crear propiedad y subir ${staged.length} foto${staged.length === 1 ? "" : "s"}`
+                : "Crear propiedad"}
       </button>
     </form>
   );

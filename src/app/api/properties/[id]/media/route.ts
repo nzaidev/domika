@@ -9,6 +9,7 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
 const MAX_DIMENSION = 1600;
+const MAX_PHOTOS_PER_PROPERTY = 20;
 const ACCEPTED_TYPES = new Set([
   "image/jpeg",
   "image/png",
@@ -76,10 +77,21 @@ export async function POST(
 
   let position = (lastMedia?.position ?? -1) + 1;
   let hasAnyMedia = (existingCount ?? 0) > 0;
+  let remainingSlots = Math.max(
+    0,
+    MAX_PHOTOS_PER_PROPERTY - (existingCount ?? 0),
+  );
   const uploaded: Array<{ id: string; url: string | null }> = [];
   const errors: string[] = [];
 
   for (const file of files) {
+    if (remainingSlots <= 0) {
+      errors.push(
+        `${file.name}: la propiedad ya tiene el máximo de ${MAX_PHOTOS_PER_PROPERTY} fotos.`,
+      );
+      continue;
+    }
+
     if (!ACCEPTED_TYPES.has(file.type)) {
       errors.push(`${file.name}: formato no soportado (${file.type || "?"}).`);
       continue;
@@ -143,6 +155,7 @@ export async function POST(
       uploaded.push({ id: mediaRow.id, url: mediaRow.public_url });
       position += 1;
       hasAnyMedia = true;
+      remainingSlots -= 1;
     } catch {
       errors.push(`${file.name}: no se pudo procesar la imagen.`);
     }
