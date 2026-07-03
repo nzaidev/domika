@@ -389,6 +389,30 @@ export type PublicListingRow = {
   published_at: string | null;
 };
 
+export type BrochureTemplateRow = {
+  id: string;
+  organization_id: string;
+  name: string;
+  layout: Json;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BrochureRow = {
+  id: string;
+  organization_id: string;
+  property_id: string;
+  template_id: string | null;
+  created_by: string | null;
+  title: string;
+  output_format: string;
+  storage_path: string | null;
+  metadata: Json;
+  created_at: string;
+  updated_at: string;
+};
+
 export type AuditLogRow = {
   id: string;
   organization_id: string | null;
@@ -424,6 +448,8 @@ export type Database = {
       notifications: Table<NotificationRow>;
       automation_rules: Table<AutomationRuleRow>;
       audit_log: Table<AuditLogRow>;
+      brochure_templates: Table<BrochureTemplateRow>;
+      brochures: Table<BrochureRow>;
     };
     Views: Record<string, never>;
     Functions: {

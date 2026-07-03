@@ -114,6 +114,12 @@ export default async function PropertyDetailPage({
               ← Inventario
             </Link>
             <Link
+              className={styles.secondaryButton}
+              href={`/brochures?property=${property.id}`}
+            >
+              Generar folleto
+            </Link>
+            <Link
               className={styles.primaryButton}
               href={`/properties/${property.id}/edit`}
             >

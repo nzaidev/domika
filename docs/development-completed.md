@@ -2,7 +2,7 @@
 
 Status of implemented work against [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md), with UI test steps for each feature.
 
-Last updated: July 3, 2026 · Current state: **Phase 0 complete, Phase 1 complete, Phase 2 in progress** (property inventory done; tasks, collaboration, brochures pending).
+Last updated: July 3, 2026 · Current state: **Phase 0 complete, Phase 1 complete, Phase 2 complete** (inventory, tasks + automation, collaboration network, brochures). Next: Phase 3 — contracts, email, demand matching, notifications feed.
 
 > **Deployment status:** all work is committed and pushed to `github.com/nzaidev/domika` (main). It has **not** been verified in production — a Vercel project (`domika`) is linked, but whether pushes auto-deploy depends on the Vercel Git integration, and migrations `…0003`–`…0005` still need `supabase db push` against the production project. Treat everything below as verified locally (typecheck, lint, build) plus the UI test steps documented per feature.
 
@@ -221,9 +221,27 @@ Testing cross-org features needs **two orgs**: create a second Clerk user in inc
 5. Expiry: a share created with 0-day... use SQL to set `expires_at` in the past → recipient sees "Este acceso compartido expiró".
 6. Isolation: a user from an unrelated org opening someone else's `/network/shared/{shareId}` gets 404.
 
-### Pending in Phase 2
+### 15. Brochure designer (PDF + WhatsApp flyer) ✅
 
-Brochure designer (WhatsApp flyer + PDF). Nice-to-haves pending: realtime updates on shared properties (Supabase Realtime), tasks calendar view, automation-rules management UI.
+PDF-rendering decision (plan risk 5 / §12): **pdf-lib + sharp — no headless Chromium on serverless.** Both formats pull live property data, the cover photo (WebP → JPEG conversion for PDF embedding), and org branding (`brand_color`, name); layouts are section-based and stored as jsonb in `brochure_templates`.
+
+**Test — generate:**
+1. `/brochures` (or property detail → "Generar folleto", which preselects it).
+2. Pick property + format: **Folleto PDF (A4)** or **Flyer WhatsApp (1080×1350 vertical)**.
+3. Sections are reorderable (↑/↓) and removable/addable: portada, precio, ficha técnica, descripción, amenidades, contacto del agente.
+4. "Generar" → PDF opens in a new tab (brand-color header band with org name, cover, title, price in brand color, two-column specs, description, agent footer band); flyer shows an inline preview + "Abrir imagen" — cover on top, branded panel with title/price/specs, footer with agent + org.
+5. Output lands in Supabase Storage under `{org}/brochures/{property}/` and is recorded in the **Historial** panel with a reopen link.
+
+**Test — template library:**
+1. Arrange sections, type a name → "Guardar plantilla" → it appears under Plantillas.
+2. Selecting a template in the generator applies its section layout; "Eliminar" soft-deletes it.
+3. Templates and history are org-scoped like everything else.
+
+### Phase 2 — complete ✅
+
+All four modules delivered: property inventory, task management + automation + reminders, collaboration network, brochure designer. This is the **week-4 delivery gate**: the full "agent day-one" flow — add lead → load property with photos → share/publish it → generate brochure → auto/manual follow-up task — is demonstrable end-to-end.
+
+Nice-to-haves pending (non-blocking): realtime updates on shared properties (Supabase Realtime), tasks calendar view, automation-rules management UI.
 
 ---
 

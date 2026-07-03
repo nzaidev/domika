@@ -1395,3 +1395,10 @@ a.propertyCard:hover {
   background: var(--app-coral-soft);
   color: var(--app-coral);
 }
+
+.flyerPreview {
+  border: 1px solid var(--app-soft);
+  border-radius: 8px;
+  max-width: 280px;
+  width: 100%;
+}
