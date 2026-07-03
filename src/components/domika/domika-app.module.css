@@ -1088,3 +1088,16 @@ a.leadCard {
 a.leadCard:hover {
   border-color: var(--app-green-deep);
 }
+
+.stageDropActive {
+  border-color: var(--app-green-deep);
+  outline: 2px solid var(--app-mint);
+}
+
+a.leadCard[draggable="true"] {
+  cursor: grab;
+}
+
+a.leadCard[draggable="true"]:active {
+  cursor: grabbing;
+}

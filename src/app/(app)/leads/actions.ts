@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { changeLeadStage } from "@/lib/domain/lead-detail";
 import { createLead } from "@/lib/domain/leads";
 
 export type CreateLeadFormState = {
@@ -29,4 +30,21 @@ export async function createLeadAction(
   revalidatePath("/dashboard");
 
   return { error: null, createdLeadName: fullName.trim() };
+}
+
+export async function moveLeadAction(
+  leadId: string,
+  toStageId: string,
+): Promise<{ error: string | null }> {
+  const result = await changeLeadStage({ leadId, toStageId });
+
+  if (result.ok === false) {
+    return { error: result.error };
+  }
+
+  revalidatePath("/leads");
+  revalidatePath(`/leads/${leadId}`);
+  revalidatePath("/dashboard");
+
+  return { error: null };
 }

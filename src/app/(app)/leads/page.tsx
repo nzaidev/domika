@@ -1,72 +1,11 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/domika/AppWidgets";
 import styles from "@/components/domika/domika-app.module.css";
-import type { LeadRow } from "@/lib/database.types";
-import { getLeadsBoard, type LeadsBoardStage } from "@/lib/domain/leads";
+import { getLeadsBoard } from "@/lib/domain/leads";
 import { CreateLeadForm } from "./CreateLeadForm";
+import { LeadsBoard } from "./LeadsBoard";
 
 export const dynamic = "force-dynamic";
-
-const SOURCE_LABELS: Record<LeadRow["source"], string> = {
-  manual: "Manual",
-  whatsapp: "WhatsApp",
-  meta_ads: "Meta Ads",
-  portal: "Portal",
-  referral: "Referido",
-  listing: "Publicación",
-  other: "Otro",
-};
-
-function leadSubtitle(lead: LeadRow) {
-  const parts = [SOURCE_LABELS[lead.source]];
-  if (lead.desired_zone) {
-    parts.push(lead.desired_zone);
-  }
-  if (lead.phone) {
-    parts.push(lead.phone);
-  }
-  return parts.join(" · ");
-}
-
-function StageBoard({ stages }: { stages: LeadsBoardStage[] }) {
-  return (
-    <section className={styles.lifecycle}>
-      <div className={styles.sectionHeader}>
-        <div>
-          <span className={styles.eyebrow}>Ciclo de vida del prospecto</span>
-          <h2>Del contacto de WhatsApp al cierre</h2>
-        </div>
-        <span className={styles.pill}>Embudo activo</span>
-      </div>
-      <div className={styles.stageGrid}>
-        {stages.map((stage) => (
-          <article className={styles.stage} key={stage.id}>
-            <div className={styles.stageHead}>
-              <strong>{stage.name}</strong>
-              <span>{stage.leads.length}</span>
-            </div>
-            <div className={styles.leadStack}>
-              {stage.leads.map((lead) => (
-                <Link
-                  className={styles.leadCard}
-                  href={`/leads/${lead.id}`}
-                  key={lead.id}
-                >
-                  <strong>{lead.full_name}</strong>
-                  <small>{leadSubtitle(lead)}</small>
-                </Link>
-              ))}
-              {stage.leads.length === 0 ? (
-                <p className={styles.mutedText}>Sin prospectos</p>
-              ) : null}
-            </div>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
 
 export default async function LeadsPage() {
   const board = await getLeadsBoard();
@@ -106,7 +45,7 @@ export default async function LeadsPage() {
       />
 
       <div className={styles.leadsGrid}>
-        <StageBoard stages={board.stages} />
+        <LeadsBoard stages={board.stages} />
         <aside className={styles.detailRail}>
           <div className={styles.sectionHeader}>
             <div>
