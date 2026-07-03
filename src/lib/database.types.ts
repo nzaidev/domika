@@ -304,6 +304,14 @@ export type PropertyShareRow = {
   updated_at: string;
 };
 
+export type TaskType =
+  | "call"
+  | "visit"
+  | "document"
+  | "follow_up"
+  | "meeting"
+  | "other";
+
 export type TaskRow = {
   id: string;
   organization_id: string;
@@ -311,11 +319,44 @@ export type TaskRow = {
   property_id: string | null;
   assigned_to: string | null;
   created_by: string | null;
+  task_type: TaskType;
   title: string;
+  description: string | null;
   status: "todo" | "in_progress" | "done" | "cancelled";
   priority: "low" | "medium" | "high" | "urgent";
   due_at: string | null;
+  reminder_channels: string[];
   auto_generated: boolean;
+  metadata: Json;
+  created_at: string;
+  updated_at: string;
+};
+
+export type NotificationRow = {
+  id: string;
+  organization_id: string;
+  profile_id: string | null;
+  status: "unread" | "read" | "archived";
+  title: string;
+  body: string | null;
+  metadata: Json;
+  created_at: string;
+  read_at: string | null;
+};
+
+export type AutomationRuleRow = {
+  id: string;
+  organization_id: string;
+  name: string;
+  trigger:
+    | "stage_change"
+    | "lead_inactivity"
+    | "new_message"
+    | "new_property"
+    | "new_requirement";
+  conditions: Json;
+  actions: Json;
+  active: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -369,6 +410,8 @@ export type Database = {
       listing_lead_attributions: Table<ListingLeadAttributionRow>;
       property_shares: Table<PropertyShareRow>;
       tasks: Table<TaskRow>;
+      notifications: Table<NotificationRow>;
+      automation_rules: Table<AutomationRuleRow>;
     };
     Views: Record<string, never>;
     Functions: {

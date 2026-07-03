@@ -1334,3 +1334,64 @@ a.propertyCard:hover {
   position: fixed;
   transform: translateX(-50%);
 }
+
+.taskRow {
+  align-items: start;
+  background: #ffffff;
+  border: 1px solid var(--app-soft);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto minmax(0, 1fr);
+  padding: 10px;
+}
+
+.taskCheck {
+  align-items: center;
+  background: none;
+  border: 1px solid var(--app-soft);
+  border-radius: 999px;
+  color: var(--app-green-deep);
+  cursor: pointer;
+  display: flex;
+  font-size: 15px;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
+}
+
+.taskCheck:hover {
+  border-color: var(--app-green-deep);
+}
+
+.taskBody {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.taskDone {
+  color: var(--app-muted);
+  text-decoration: line-through;
+}
+
+.taskLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.taskLinks a {
+  color: var(--app-green-deep);
+  text-decoration: none;
+}
+
+.taskLinks a:hover {
+  text-decoration: underline;
+}
+
+.pillAlert {
+  background: var(--app-coral-soft);
+  color: var(--app-coral);
+}

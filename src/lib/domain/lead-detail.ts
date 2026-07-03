@@ -10,6 +10,7 @@ import type {
 } from "@/lib/database.types";
 import { getSessionProfile } from "@/lib/auth/session";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { runAutomationRules } from "@/lib/domain/automation";
 
 export type LeadDetail =
   | { status: "not_configured" }
@@ -138,7 +139,7 @@ export async function changeLeadStage(input: {
   const [lead, toStage] = await Promise.all([
     supabase
       .from("leads")
-      .select("id, stage_id")
+      .select("id, stage_id, full_name, assigned_to")
       .eq("id", input.leadId)
       .eq("organization_id", organizationId)
       .maybeSingle(),
@@ -191,6 +192,15 @@ export async function changeLeadStage(input: {
       body: `Cambio de etapa realizado por ${session.profile.full_name}.`,
     }),
   ]);
+
+  await runAutomationRules("stage_change", {
+    organizationId,
+    leadId: input.leadId,
+    leadName: lead.data.full_name,
+    toStageName: toStage.data.name,
+    actorProfileId: session.profile.id,
+    assignedTo: lead.data.assigned_to,
+  });
 
   return { ok: true };
 }

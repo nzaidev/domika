@@ -2,6 +2,7 @@ import "server-only";
 
 import { normalizePhone } from "@/lib/phone";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { runAutomationRules } from "@/lib/domain/automation";
 
 // Shapes from the Meta Cloud API webhook payload (WhatsApp Business Platform).
 export type MetaWebhookMessage = {
@@ -223,6 +224,12 @@ async function ingestMessage(
       activity_type: "message",
       title: "Prospecto creado desde WhatsApp",
       body: "Primer mensaje entrante de un número desconocido.",
+    });
+
+    await runAutomationRules("new_message", {
+      organizationId,
+      leadId,
+      leadName: contactName ?? contactPhone,
     });
   }
 
