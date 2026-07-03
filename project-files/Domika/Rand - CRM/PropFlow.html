@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PropFlow — Plataforma Inmobiliaria Inteligente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/shared.css">
+<link rel="stylesheet" href="assets/landing.css">
+<link rel="stylesheet" href="assets/screens.css">
+</head>
+<body>
+<div id="app"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="data.jsx"></script>
+<script type="text/babel" src="shell.jsx"></script>
+<script type="text/babel" src="landing.jsx"></script>
+<script type="text/babel" src="dashboard.jsx"></script>
+<script type="text/babel" src="crm.jsx"></script>
+<script type="text/babel" src="properties.jsx"></script>
+<script type="text/babel" src="detail.jsx"></script>
+
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const TWEAK_DEFAULS = /*EDITMODE-BEGIN*/{
+  "lang": "es"
+}/*EDITMODE-END*/;
+
+const App = () => {
+  const [route, setRoute] = useState('landing');
+  const [property, setProperty] = useState(null);
+  const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULS);
+  const t = window.I18N[tweaks.lang] || window.I18N.es;
+
+  const openProperty = (p) => {
+    setProperty(p);
+    setRoute('detail');
+    window.scrollTo(0, 0);
+  };
+
+  // scroll to top when route changes
+  useEffect(() => { window.scrollTo(0, 0); }, [route]);
+
+  const isLanding = route === 'landing';
+
+  return (
+    <>
+      <div className={'app' + (isLanding ? ' app--landing' : '')}>
+        {!isLanding && <window.Sidebar active={route} setRoute={setRoute} t={t} />}
+        <main className="main">
+          {route === 'landing' && <window.Landing t={t} setRoute={setRoute} />}
+          {route === 'dashboard' && <window.Dashboard t={t} setRoute={setRoute} openProperty={openProperty} />}
+          {route === 'leads' && <window.Crm t={t} />}
+          {route === 'properties' && <window.Properties t={t} openProperty={openProperty} />}
+          {route === 'detail' && <window.Detail t={t} property={property} setRoute={setRoute} />}
+          {(route === 'tasks' || route === 'network' || route === 'brochures' || route === 'settings') && (
+            <div className="page">
+              <window.Topbar title={t['nav_' + route] || route} subtitle="Próximamente" />
+              <div className="content">
+                <div className="panel" style={{ textAlign: 'center', padding: 80 }}>
+                  <div style={{ fontSize: 48, marginBottom: 12 }}>🚧</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700 }}>Sección en construcción</div>
+                  <div style={{ color: 'var(--ink-500)', marginTop: 8 }}>Esta vista forma parte del roadmap del MVP.</div>
+                </div>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+
+      <TweaksPanel title="Tweaks">
+        <TweakSection title="Idioma">
+          <TweakRadio
+            value={tweaks.lang}
+            onChange={(v) => setTweak('lang', v)}
+            options={[
+              { value: 'es', label: 'Español' },
+              { value: 'en', label: 'English' },
+            ]}
+          />
+        </TweakSection>
+      </TweaksPanel>
+    </>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('app')).render(<App />);
+</script>
+</body>
+</html>

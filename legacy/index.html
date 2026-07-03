@@ -1,0 +1,1721 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PropFlow — Plataforma Inmobiliaria Inteligente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/shared.css">
+</head>
+<body>
+<div id="app"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel">
+// ═══════════════════════════════════════════════════════════
+// tweaks-panel
+// ═══════════════════════════════════════════════════════════
+const __TWEAKS_STYLE = `
+  .twk-panel{position:fixed;right:16px;bottom:16px;z-index:2147483646;width:280px;
+    max-height:calc(100vh - 32px);display:flex;flex-direction:column;
+    background:rgba(250,249,247,.78);color:#29261b;
+    -webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);
+    border:.5px solid rgba(255,255,255,.6);border-radius:14px;
+    box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 12px 40px rgba(0,0,0,.18);
+    font:11.5px/1.4 ui-sans-serif,system-ui,-apple-system,sans-serif;overflow:hidden}
+  .twk-hd{display:flex;align-items:center;justify-content:space-between;
+    padding:10px 8px 10px 14px;cursor:move;user-select:none}
+  .twk-hd b{font-size:12px;font-weight:600;letter-spacing:.01em}
+  .twk-x{appearance:none;border:0;background:transparent;color:rgba(41,38,27,.55);
+    width:22px;height:22px;border-radius:6px;cursor:default;font-size:13px;line-height:1}
+  .twk-x:hover{background:rgba(0,0,0,.06);color:#29261b}
+  .twk-body{padding:2px 14px 14px;display:flex;flex-direction:column;gap:10px;
+    overflow-y:auto;overflow-x:hidden;min-height:0;
+    scrollbar-width:thin;scrollbar-color:rgba(0,0,0,.15) transparent}
+  .twk-body::-webkit-scrollbar{width:8px}
+  .twk-body::-webkit-scrollbar-track{background:transparent;margin:2px}
+  .twk-body::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:4px;
+    border:2px solid transparent;background-clip:content-box}
+  .twk-body::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.25);
+    border:2px solid transparent;background-clip:content-box}
+  .twk-row{display:flex;flex-direction:column;gap:5px}
+  .twk-row-h{flex-direction:row;align-items:center;justify-content:space-between;gap:10px}
+  .twk-lbl{display:flex;justify-content:space-between;align-items:baseline;
+    color:rgba(41,38,27,.72)}
+  .twk-lbl>span:first-child{font-weight:500}
+  .twk-val{color:rgba(41,38,27,.5);font-variant-numeric:tabular-nums}
+
+  .twk-sect{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+    color:rgba(41,38,27,.45);padding:10px 0 0}
+  .twk-sect:first-child{padding-top:0}
+
+  .twk-field{appearance:none;width:100%;height:26px;padding:0 8px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:7px;
+    background:rgba(255,255,255,.6);color:inherit;font:inherit;outline:none}
+  .twk-field:focus{border-color:rgba(0,0,0,.25);background:rgba(255,255,255,.85)}
+  select.twk-field{padding-right:22px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='rgba(0,0,0,.5)' d='M0 0h10L5 6z'/></svg>");
+    background-repeat:no-repeat;background-position:right 8px center}
+
+  .twk-slider{appearance:none;-webkit-appearance:none;width:100%;height:4px;margin:6px 0;
+    border-radius:999px;background:rgba(0,0,0,.12);outline:none}
+  .twk-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+    width:14px;height:14px;border-radius:50%;background:#fff;
+    border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:default}
+  .twk-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;
+    background:#fff;border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:default}
+
+  .twk-seg{position:relative;display:flex;padding:2px;border-radius:8px;
+    background:rgba(0,0,0,.06);user-select:none}
+  .twk-seg-thumb{position:absolute;top:2px;bottom:2px;border-radius:6px;
+    background:rgba(255,255,255,.9);box-shadow:0 1px 2px rgba(0,0,0,.12);
+    transition:left .15s cubic-bezier(.3,.7,.4,1),width .15s}
+  .twk-seg.dragging .twk-seg-thumb{transition:none}
+  .twk-seg button{appearance:none;position:relative;z-index:1;flex:1;border:0;
+    background:transparent;color:inherit;font:inherit;font-weight:500;min-height:22px;
+    border-radius:6px;cursor:default;padding:4px 6px;line-height:1.2;
+    overflow-wrap:anywhere}
+
+  .twk-toggle{position:relative;width:32px;height:18px;border:0;border-radius:999px;
+    background:rgba(0,0,0,.15);transition:background .15s;cursor:default;padding:0}
+  .twk-toggle[data-on="1"]{background:#34c759}
+  .twk-toggle i{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;
+    background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s}
+  .twk-toggle[data-on="1"] i{transform:translateX(14px)}
+
+  .twk-num{display:flex;align-items:center;height:26px;padding:0 0 0 8px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:7px;background:rgba(255,255,255,.6)}
+  .twk-num-lbl{font-weight:500;color:rgba(41,38,27,.6);cursor:ew-resize;
+    user-select:none;padding-right:8px}
+  .twk-num input{flex:1;min-width:0;height:100%;border:0;background:transparent;
+    font:inherit;font-variant-numeric:tabular-nums;text-align:right;padding:0 8px 0 0;
+    outline:none;color:inherit;-moz-appearance:textfield}
+  .twk-num input::-webkit-inner-spin-button,.twk-num input::-webkit-outer-spin-button{
+    -webkit-appearance:none;margin:0}
+  .twk-num-unit{padding-right:8px;color:rgba(41,38,27,.45)}
+
+  .twk-btn{appearance:none;height:26px;padding:0 12px;border:0;border-radius:7px;
+    background:rgba(0,0,0,.78);color:#fff;font:inherit;font-weight:500;cursor:default}
+  .twk-btn:hover{background:rgba(0,0,0,.88)}
+  .twk-btn.secondary{background:rgba(0,0,0,.06);color:inherit}
+  .twk-btn.secondary:hover{background:rgba(0,0,0,.1)}
+
+  .twk-swatch{appearance:none;-webkit-appearance:none;width:56px;height:22px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:6px;padding:0;cursor:default;
+    background:transparent;flex-shrink:0}
+  .twk-swatch::-webkit-color-swatch-wrapper{padding:0}
+  .twk-swatch::-webkit-color-swatch{border:0;border-radius:5.5px}
+  .twk-swatch::-moz-color-swatch{border:0;border-radius:5.5px}
+`;
+
+function useTweaks(defaults) {
+  const [values, setValues] = React.useState(defaults);
+  const setTweak = React.useCallback((keyOrEdits, val) => {
+    const edits = typeof keyOrEdits === 'object' && keyOrEdits !== null
+      ? keyOrEdits : { [keyOrEdits]: val };
+    setValues((prev) => ({ ...prev, ...edits }));
+    window.parent.postMessage({ type: '__edit_mode_set_keys', edits }, '*');
+  }, []);
+  return [values, setTweak];
+}
+
+function TweaksPanel({ title = 'Tweaks', children }) {
+  const [open, setOpen] = React.useState(false);
+  const dragRef = React.useRef(null);
+  const offsetRef = React.useRef({ x: 16, y: 16 });
+  const PAD = 16;
+
+  const clampToViewport = React.useCallback(() => {
+    const panel = dragRef.current;
+    if (!panel) return;
+    const w = panel.offsetWidth, h = panel.offsetHeight;
+    const maxRight = Math.max(PAD, window.innerWidth - w - PAD);
+    const maxBottom = Math.max(PAD, window.innerHeight - h - PAD);
+    offsetRef.current = {
+      x: Math.min(maxRight, Math.max(PAD, offsetRef.current.x)),
+      y: Math.min(maxBottom, Math.max(PAD, offsetRef.current.y)),
+    };
+    panel.style.right = offsetRef.current.x + 'px';
+    panel.style.bottom = offsetRef.current.y + 'px';
+  }, []);
+
+  React.useEffect(() => {
+    if (!open) return;
+    clampToViewport();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', clampToViewport);
+      return () => window.removeEventListener('resize', clampToViewport);
+    }
+    const ro = new ResizeObserver(clampToViewport);
+    ro.observe(document.documentElement);
+    return () => ro.disconnect();
+  }, [open, clampToViewport]);
+
+  React.useEffect(() => {
+    const onMsg = (e) => {
+      const t = e?.data?.type;
+      if (t === '__activate_edit_mode') setOpen(true);
+      else if (t === '__deactivate_edit_mode') setOpen(false);
+    };
+    window.addEventListener('message', onMsg);
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+
+  const dismiss = () => {
+    setOpen(false);
+    window.parent.postMessage({ type: '__edit_mode_dismissed' }, '*');
+  };
+
+  const onDragStart = (e) => {
+    const panel = dragRef.current;
+    if (!panel) return;
+    const r = panel.getBoundingClientRect();
+    const sx = e.clientX, sy = e.clientY;
+    const startRight = window.innerWidth - r.right;
+    const startBottom = window.innerHeight - r.bottom;
+    const move = (ev) => {
+      offsetRef.current = {
+        x: startRight - (ev.clientX - sx),
+        y: startBottom - (ev.clientY - sy),
+      };
+      clampToViewport();
+    };
+    const up = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
+
+  if (!open) return null;
+  return (
+    <>
+      <style>{__TWEAKS_STYLE}</style>
+      <div ref={dragRef} className="twk-panel" data-noncommentable=""
+           style={{ right: offsetRef.current.x, bottom: offsetRef.current.y }}>
+        <div className="twk-hd" onMouseDown={onDragStart}>
+          <b>{title}</b>
+          <button className="twk-x" aria-label="Close tweaks"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={dismiss}>✕</button>
+        </div>
+        <div className="twk-body">{children}</div>
+      </div>
+    </>
+  );
+}
+
+function TweakSection({ label, children }) {
+  return (
+    <>
+      <div className="twk-sect">{label}</div>
+      {children}
+    </>
+  );
+}
+
+function TweakRow({ label, value, children, inline = false }) {
+  return (
+    <div className={inline ? 'twk-row twk-row-h' : 'twk-row'}>
+      <div className="twk-lbl">
+        <span>{label}</span>
+        {value != null && <span className="twk-val">{value}</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function TweakSlider({ label, value, min = 0, max = 100, step = 1, unit = '', onChange }) {
+  return (
+    <TweakRow label={label} value={`${value}${unit}`}>
+      <input type="range" className="twk-slider" min={min} max={max} step={step}
+             value={value} onChange={(e) => onChange(Number(e.target.value))} />
+    </TweakRow>
+  );
+}
+
+function TweakToggle({ label, value, onChange }) {
+  return (
+    <div className="twk-row twk-row-h">
+      <div className="twk-lbl"><span>{label}</span></div>
+      <button type="button" className="twk-toggle" data-on={value ? '1' : '0'}
+              role="switch" aria-checked={!!value}
+              onClick={() => onChange(!value)}><i /></button>
+    </div>
+  );
+}
+
+function TweakRadio({ label, value, options, onChange }) {
+  const trackRef = React.useRef(null);
+  const [dragging, setDragging] = React.useState(false);
+  const opts = options.map((o) => (typeof o === 'object' ? o : { value: o, label: o }));
+  const idx = Math.max(0, opts.findIndex((o) => o.value === value));
+  const n = opts.length;
+
+  const valueRef = React.useRef(value);
+  valueRef.current = value;
+
+  const segAt = (clientX) => {
+    const r = trackRef.current.getBoundingClientRect();
+    const inner = r.width - 4;
+    const i = Math.floor(((clientX - r.left - 2) / inner) * n);
+    return opts[Math.max(0, Math.min(n - 1, i))].value;
+  };
+
+  const onPointerDown = (e) => {
+    setDragging(true);
+    const v0 = segAt(e.clientX);
+    if (v0 !== valueRef.current) onChange(v0);
+    const move = (ev) => {
+      if (!trackRef.current) return;
+      const v = segAt(ev.clientX);
+      if (v !== valueRef.current) onChange(v);
+    };
+    const up = () => {
+      setDragging(false);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
+  return (
+    <TweakRow label={label}>
+      <div ref={trackRef} role="radiogroup" onPointerDown={onPointerDown}
+           className={dragging ? 'twk-seg dragging' : 'twk-seg'}>
+        <div className="twk-seg-thumb"
+             style={{ left: `calc(2px + ${idx} * (100% - 4px) / ${n})`,
+                      width: `calc((100% - 4px) / ${n})` }} />
+        {opts.map((o) => (
+          <button key={o.value} type="button" role="radio" aria-checked={o.value === value}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </TweakRow>
+  );
+}
+
+function TweakSelect({ label, value, options, onChange }) {
+  return (
+    <TweakRow label={label}>
+      <select className="twk-field" value={value} onChange={(e) => onChange(e.target.value)}>
+        {options.map((o) => {
+          const v = typeof o === 'object' ? o.value : o;
+          const l = typeof o === 'object' ? o.label : o;
+          return <option key={v} value={v}>{l}</option>;
+        })}
+      </select>
+    </TweakRow>
+  );
+}
+
+function TweakText({ label, value, placeholder, onChange }) {
+  return (
+    <TweakRow label={label}>
+      <input className="twk-field" type="text" value={value} placeholder={placeholder}
+             onChange={(e) => onChange(e.target.value)} />
+    </TweakRow>
+  );
+}
+
+function TweakNumber({ label, value, min, max, step = 1, unit = '', onChange }) {
+  const clamp = (n) => {
+    if (min != null && n < min) return min;
+    if (max != null && n > max) return max;
+    return n;
+  };
+  const startRef = React.useRef({ x: 0, val: 0 });
+  const onScrubStart = (e) => {
+    e.preventDefault();
+    startRef.current = { x: e.clientX, val: value };
+    const decimals = (String(step).split('.')[1] || '').length;
+    const move = (ev) => {
+      const dx = ev.clientX - startRef.current.x;
+      const raw = startRef.current.val + dx * step;
+      const snapped = Math.round(raw / step) * step;
+      onChange(clamp(Number(snapped.toFixed(decimals))));
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+  return (
+    <div className="twk-num">
+      <span className="twk-num-lbl" onPointerDown={onScrubStart}>{label}</span>
+      <input type="number" value={value} min={min} max={max} step={step}
+             onChange={(e) => onChange(clamp(Number(e.target.value)))} />
+      {unit && <span className="twk-num-unit">{unit}</span>}
+    </div>
+  );
+}
+
+function TweakColor({ label, value, onChange }) {
+  return (
+    <div className="twk-row twk-row-h">
+      <div className="twk-lbl"><span>{label}</span></div>
+      <input type="color" className="twk-swatch" value={value}
+             onChange={(e) => onChange(e.target.value)} />
+    </div>
+  );
+}
+
+function TweakButton({ label, onClick, secondary = false }) {
+  return (
+    <button type="button" className={secondary ? 'twk-btn secondary' : 'twk-btn'}
+            onClick={onClick}>{label}</button>
+  );
+}
+
+Object.assign(window, {
+  useTweaks, TweaksPanel, TweakSection, TweakRow,
+  TweakSlider, TweakToggle, TweakRadio, TweakSelect,
+  TweakText, TweakNumber, TweakColor, TweakButton,
+});
+
+// ═══════════════════════════════════════════════════════════
+// data
+// ═══════════════════════════════════════════════════════════
+const I18N = {
+  es: {
+    nav_landing: 'Inicio',
+    nav_dashboard: 'Panel Principal',
+    nav_leads: 'Leads',
+    nav_properties: 'Propiedades',
+    nav_tasks: 'Tareas',
+    nav_network: 'Red de Agentes',
+    nav_brochures: 'Brochures',
+    nav_settings: 'Configuración',
+    nav_features: 'Funcionalidades',
+    nav_pricing: 'Precios',
+    nav_clients: 'Clientes',
+    nav_login: 'Iniciar sesión',
+    hero_pill_tag: 'NUEVO',
+    hero_pill: 'Embudo de ventas con IA · Disponible ahora',
+    hero_title_a: 'Plataforma',
+    hero_title_b: 'Inmobiliaria Inteligente',
+    hero_title_c: 'para Agentes',
+    hero_sub: 'Gestiona leads, propiedades, tareas y colaboraciones desde un solo lugar. Cierra más ventas con menos fricción.',
+    cta_demo: 'Solicitar Demo',
+    cta_features: 'Ver Funcionalidades',
+    feat_pill_1: 'CRM Inmobiliario',
+    feat_pill_2: 'Inventario de Propiedades',
+    feat_pill_3: 'Red de Agentes',
+    feat_pill_4: 'Brochures Profesionales',
+    feat_pill_5: 'Automatización',
+    stats_eyebrow: 'CONFIANZA EN NÚMEROS',
+    stat_1_label: 'Agentes activos',
+    stat_2_label: 'Propiedades gestionadas',
+    stat_3_label: 'Cierres por mes',
+    stat_4_label: 'Tasa de conversión',
+    feat_eyebrow: 'TODO LO QUE NECESITAS',
+    feat_title: 'Una plataforma, todo el negocio inmobiliario',
+    feat_sub: 'Diseñada por y para agentes que quieren cerrar más, con menos herramientas dispersas.',
+    f1_title: 'CRM con embudo visual',
+    f1_desc: 'Pipeline kanban con etapas personalizables. Llamada, WhatsApp y envío de propiedades sin salir del lead.',
+    f2_title: 'Inventario completo',
+    f2_desc: 'Cataloga propiedades con fotos, planos, amenidades y datos privados del propietario por separado.',
+    f3_title: 'Red colaborativa',
+    f3_desc: 'Comparte propiedades con agentes de tu red protegiendo siempre la información sensible del dueño.',
+    f4_title: 'Brochures en segundos',
+    f4_desc: 'Genera presentaciones profesionales con un click — listas para enviar al cliente por WhatsApp o email.',
+    f5_title: 'Tareas automáticas',
+    f5_desc: 'Recordatorios, seguimientos y asignaciones que se mueven contigo. Nunca pierdas un lead caliente.',
+    f6_title: 'Reportes en tiempo real',
+    f6_desc: 'Mide tu embudo, conversión, propiedades activas y proyecciones del mes desde un panel único.',
+    cta_section_title: '¿Listo para profesionalizar tu operación?',
+    cta_section_sub: 'Agenda una demo de 20 minutos y descubre cómo PropFlow se adapta a tu equipo.',
+    cta_section_btn: 'Agenda tu demo gratis',
+    footer_tag: 'Plataforma Inmobiliaria Inteligente para agentes y agencias.',
+    footer_product: 'Producto',
+    footer_company: 'Compañía',
+    footer_resources: 'Recursos',
+    footer_rights: '© 2026 PropFlow · Una plataforma de Rand Business Marketing & Funnels.',
+    dash_greeting: 'Hola, Carolina',
+    dash_subtitle: 'Aquí está el resumen de hoy. Tienes 3 tareas pendientes.',
+    new_property_btn: 'Nueva Propiedad',
+    stat_leads: 'Nuevos leads',
+    stat_properties: 'Propiedades activas',
+    stat_tasks: 'Tareas de hoy',
+    stat_closings: 'Cierres del mes',
+    funnel_title: 'Resumen del embudo comercial',
+    funnel_sub: 'Distribución de leads por etapa · esta semana',
+    activity_title: 'Actividad reciente de propiedades',
+    tasks_title: 'Próximos seguimientos',
+    tasks_sub: 'Hoy y mañana',
+    view_all: 'Ver todo',
+    funnel_new: 'Nuevo Lead',
+    funnel_contacted: 'Contactado',
+    funnel_visit: 'Visita Programada',
+    funnel_negotiation: 'Negociación',
+    funnel_closing: 'Cierre',
+    crm_title: 'Pipeline Comercial',
+    crm_sub: 'Arrastra y suelta para mover los leads entre etapas',
+    crm_filter: 'Filtrar',
+    crm_new_lead: 'Nuevo Lead',
+    lead_call: 'Llamar',
+    lead_whatsapp: 'WhatsApp',
+    lead_send: 'Enviar',
+    lead_budget: 'Presupuesto',
+    prop_title: 'Inventario de Propiedades',
+    prop_sub: '128 propiedades · 84 activas · 12 borradores',
+    prop_all: 'Todas',
+    prop_active: 'Activas',
+    prop_shared: 'Compartidas',
+    prop_drafts: 'Borradores',
+    prop_action_brochure: 'Brochure',
+    prop_action_share: 'Compartir',
+    prop_action_publish: 'Publicar',
+    prop_action_edit: 'Editar',
+    badge_active: 'Activa',
+    badge_shared: 'Compartida',
+    badge_draft: 'Borrador',
+    bedrooms: 'hab',
+    bathrooms: 'baños',
+    sqm: 'm²',
+    back: 'Volver',
+    detail_back: 'Volver al inventario',
+    detail_about: 'Sobre la propiedad',
+    detail_about_text: 'Penthouse de lujo en torre nueva con vista panorámica al mar. Doble altura en sala, terraza envolvente con jacuzzi privado y dos cocheras techadas. Acabados premium, domótica integrada y acceso al lobby por código privado. Listo para entrega inmediata.',
+    detail_amenities: 'Amenidades',
+    detail_specs_label_beds: 'Habitaciones',
+    detail_specs_label_baths: 'Baños',
+    detail_specs_label_size: 'Construcción',
+    detail_specs_label_parking: 'Cocheras',
+    private_banner: 'Información del Propietario · Privado',
+    private_sub: 'Solo visualización · Sin datos del dueño al compartir',
+    owner_label: 'Propietario',
+    owner_agent_label: 'Agente captador',
+    owner_call: 'Llamar',
+    share_title: 'Compartir y colaborar',
+    share_sub: 'Controla qué información ven los demás',
+    share_internal: 'Compartir con agente',
+    share_internal_sub: 'Acceso completo, sin datos del dueño',
+    share_client: 'Enviar al cliente',
+    share_client_sub: 'Vista pública, sin precio negociable',
+    share_action_internal: 'Compartir con Agente',
+    share_action_client: 'Enviar al Cliente',
+    share_action_brochure: 'Crear Brochure',
+    share_action_publish: 'Publicar',
+    share_action_whatsapp: 'Enviar por WhatsApp',
+    amen_pool: 'Piscina infinita',
+    amen_gym: 'Gimnasio equipado',
+    amen_security: 'Seguridad 24/7',
+    amen_parking: '2 cocheras techadas',
+    amen_elevator: 'Ascensor privado',
+    amen_terrace: 'Terraza envolvente',
+    amen_smart: 'Domótica integrada',
+    amen_jacuzzi: 'Jacuzzi privado',
+    m_today: 'Hoy, 2 mayo',
+    m_morning: 'Buenos días',
+    m_pipeline: 'Pipeline',
+    m_value: 'Valor activo',
+    m_leads: 'Leads',
+    today: 'hoy',
+  },
+  en: {
+    nav_landing: 'Home',
+    nav_dashboard: 'Dashboard',
+    nav_leads: 'Leads',
+    nav_properties: 'Properties',
+    nav_tasks: 'Tasks',
+    nav_network: 'Agent Network',
+    nav_brochures: 'Brochures',
+    nav_settings: 'Settings',
+    nav_features: 'Features',
+    nav_pricing: 'Pricing',
+    nav_clients: 'Clients',
+    nav_login: 'Sign in',
+    hero_pill_tag: 'NEW',
+    hero_pill: 'AI sales funnel · Available now',
+    hero_title_a: 'The smart',
+    hero_title_b: 'real estate platform',
+    hero_title_c: 'for agents',
+    hero_sub: 'Manage leads, properties, tasks and collaborations from one place. Close more deals with less friction.',
+    cta_demo: 'Request Demo',
+    cta_features: 'See Features',
+    feat_pill_1: 'Real Estate CRM',
+    feat_pill_2: 'Property Inventory',
+    feat_pill_3: 'Agent Network',
+    feat_pill_4: 'Pro Brochures',
+    feat_pill_5: 'Automation',
+    stats_eyebrow: 'TRUST IN NUMBERS',
+    stat_1_label: 'Active agents',
+    stat_2_label: 'Properties managed',
+    stat_3_label: 'Closings per month',
+    stat_4_label: 'Conversion rate',
+    feat_eyebrow: 'EVERYTHING YOU NEED',
+    feat_title: 'One platform for the whole real estate business',
+    feat_sub: 'Designed by and for agents who want to close more, with fewer scattered tools.',
+    f1_title: 'Visual funnel CRM',
+    f1_desc: 'Kanban pipeline with custom stages. Call, WhatsApp and send properties without leaving the lead.',
+    f2_title: 'Complete inventory',
+    f2_desc: 'Catalog properties with photos, plans, amenities and private owner data kept separate.',
+    f3_title: 'Collaborative network',
+    f3_desc: 'Share properties with agents in your network while always protecting sensitive owner info.',
+    f4_title: 'Brochures in seconds',
+    f4_desc: 'Generate professional presentations in one click — ready to send via WhatsApp or email.',
+    f5_title: 'Automated tasks',
+    f5_desc: 'Reminders, follow-ups and assignments that move with you. Never lose a hot lead.',
+    f6_title: 'Real-time reports',
+    f6_desc: 'Measure your funnel, conversion, active properties and monthly forecasts in one place.',
+    cta_section_title: 'Ready to professionalize your operation?',
+    cta_section_sub: 'Book a 20-minute demo and see how PropFlow adapts to your team.',
+    cta_section_btn: 'Book your free demo',
+    footer_tag: 'Smart Real Estate Platform for agents and agencies.',
+    footer_product: 'Product',
+    footer_company: 'Company',
+    footer_resources: 'Resources',
+    footer_rights: '© 2026 PropFlow · A Rand Business Marketing & Funnels platform.',
+    dash_greeting: 'Hi, Carolina',
+    dash_subtitle: 'Here is today\u2019s overview. You have 3 pending tasks.',
+    new_property_btn: 'New Property',
+    stat_leads: 'New leads',
+    stat_properties: 'Active properties',
+    stat_tasks: 'Today\u2019s tasks',
+    stat_closings: 'Closings this month',
+    funnel_title: 'Sales funnel summary',
+    funnel_sub: 'Lead distribution by stage · this week',
+    activity_title: 'Recent property activity',
+    tasks_title: 'Upcoming follow-ups',
+    tasks_sub: 'Today and tomorrow',
+    view_all: 'View all',
+    funnel_new: 'New Lead',
+    funnel_contacted: 'Contacted',
+    funnel_visit: 'Visit Scheduled',
+    funnel_negotiation: 'Negotiation',
+    funnel_closing: 'Closing',
+    crm_title: 'Sales Pipeline',
+    crm_sub: 'Drag and drop to move leads between stages',
+    crm_filter: 'Filter',
+    crm_new_lead: 'New Lead',
+    lead_call: 'Call',
+    lead_whatsapp: 'WhatsApp',
+    lead_send: 'Send',
+    lead_budget: 'Budget',
+    prop_title: 'Property Inventory',
+    prop_sub: '128 properties · 84 active · 12 drafts',
+    prop_all: 'All',
+    prop_active: 'Active',
+    prop_shared: 'Shared',
+    prop_drafts: 'Drafts',
+    prop_action_brochure: 'Brochure',
+    prop_action_share: 'Share',
+    prop_action_publish: 'Publish',
+    prop_action_edit: 'Edit',
+    badge_active: 'Active',
+    badge_shared: 'Shared',
+    badge_draft: 'Draft',
+    bedrooms: 'bd',
+    bathrooms: 'ba',
+    sqm: 'm²',
+    back: 'Back',
+    detail_back: 'Back to inventory',
+    detail_about: 'About the property',
+    detail_about_text: 'Luxury penthouse in a brand-new tower with panoramic ocean views. Double-height living room, wraparound terrace with private jacuzzi and two covered parking spots. Premium finishes, integrated home automation and private code lobby access. Move-in ready.',
+    detail_amenities: 'Amenities',
+    detail_specs_label_beds: 'Bedrooms',
+    detail_specs_label_baths: 'Bathrooms',
+    detail_specs_label_size: 'Built area',
+    detail_specs_label_parking: 'Parking',
+    private_banner: 'Owner Information · Private',
+    private_sub: 'View only · No owner data when shared',
+    owner_label: 'Owner',
+    owner_agent_label: 'Listing agent',
+    owner_call: 'Call',
+    share_title: 'Share and collaborate',
+    share_sub: 'Control what information others see',
+    share_internal: 'Share with agent',
+    share_internal_sub: 'Full access, no owner data',
+    share_client: 'Send to client',
+    share_client_sub: 'Public view, no negotiable price',
+    share_action_internal: 'Share with Agent',
+    share_action_client: 'Send to Client',
+    share_action_brochure: 'Create Brochure',
+    share_action_publish: 'Publish',
+    share_action_whatsapp: 'Send via WhatsApp',
+    amen_pool: 'Infinity pool',
+    amen_gym: 'Equipped gym',
+    amen_security: '24/7 security',
+    amen_parking: '2 covered parking spots',
+    amen_elevator: 'Private elevator',
+    amen_terrace: 'Wraparound terrace',
+    amen_smart: 'Home automation',
+    amen_jacuzzi: 'Private jacuzzi',
+    m_today: 'Today, May 2',
+    m_morning: 'Good morning',
+    m_pipeline: 'Pipeline',
+    m_value: 'Active value',
+    m_leads: 'Leads',
+    today: 'today',
+  }
+};
+
+const Icon = ({ name, size = 18, ...rest }) => {
+  const paths = {
+    home: <><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10v10h14V10"/></>,
+    dashboard: <><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></>,
+    users: <><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3 2.7-5.5 6-5.5s6 2.5 6 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.5c2.5 0 5 1.5 5.5 4"/></>,
+    building: <><rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M9 8h2M13 8h2M9 12h2M13 12h2M9 16h2M13 16h2"/></>,
+    check: <><polyline points="4 12 10 18 20 6"/></>,
+    tasks: <><rect x="4" y="4" width="16" height="16" rx="2.5"/><polyline points="8 12 11 15 16 9"/></>,
+    network: <><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="18" r="2.5"/><circle cx="12" cy="6" r="2.5"/><path d="M11 8l-4 8M13 8l4 8M8 18h8"/></>,
+    brochure: <><path d="M5 4h10l4 4v12H5z"/><path d="M15 4v4h4"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></>,
+    settings: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1A2 2 0 1 1 4.3 17l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1A2 2 0 1 1 7 4.3l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></>,
+    search: <><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.5" y2="16.5"/></>,
+    bell: <><path d="M6 8a6 6 0 0 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9z"/><path d="M10.5 21a1.5 1.5 0 0 0 3 0"/></>,
+    plus: <><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>,
+    arrow_right: <><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></>,
+    arrow_up: <><line x1="12" y1="19" x2="12" y2="5"/><polyline points="6 11 12 5 18 11"/></>,
+    arrow_down: <><line x1="12" y1="5" x2="12" y2="19"/><polyline points="6 13 12 19 18 13"/></>,
+    arrow_left: <><line x1="19" y1="12" x2="5" y2="12"/><polyline points="11 6 5 12 11 18"/></>,
+    phone: <><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.7.6 2.5a2 2 0 0 1-.5 2.1L8 9.6a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2-.5c.8.3 1.7.5 2.6.6A2 2 0 0 1 22 16.9z"/></>,
+    whatsapp: <><path d="M16.5 13.5c-.3-.2-1.7-.9-2-1-.3-.1-.5-.2-.7.1l-1 1.2c-.2.2-.4.3-.7.1-.3-.2-1.3-.5-2.4-1.5-.9-.8-1.5-1.8-1.6-2.1-.2-.3 0-.4.1-.6.1-.1.3-.4.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5 0-.1-.7-1.7-1-2.3-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1 2.9 1.2 3.1c.2.2 2.1 3.1 5 4.3.7.3 1.2.5 1.7.6.7.2 1.3.2 1.8.1.6-.1 1.7-.7 1.9-1.4.2-.7.2-1.3.2-1.4-.1-.2-.3-.2-.6-.4z"/><path d="M21 12a9 9 0 0 1-13.5 7.8L3 21l1.3-4.4A9 9 0 1 1 21 12z"/></>,
+    send: <><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></>,
+    location: <><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 1 1 18 0z"/><circle cx="12" cy="10" r="3"/></>,
+    bed: <><path d="M2 18v-7a3 3 0 0 1 3-3h14a3 3 0 0 1 3 3v7"/><line x1="2" y1="14" x2="22" y2="14"/><line x1="2" y1="18" x2="2" y2="20"/><line x1="22" y1="18" x2="22" y2="20"/></>,
+    bath: <><path d="M3 12h18v3a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><path d="M5 12V7a2 2 0 0 1 4 0"/><line x1="3" y1="20" x2="3" y2="22"/><line x1="21" y1="20" x2="21" y2="22"/></>,
+    sqm: <><rect x="4" y="4" width="16" height="16" rx="1"/><line x1="4" y1="9" x2="9" y2="9"/><line x1="9" y1="4" x2="9" y2="9"/></>,
+    car: <><path d="M5 17h14M5 17v-3.5L7 8h10l2 5.5V17M5 17v2h2v-2M19 17v2h-2v-2"/><circle cx="8" cy="14" r="1"/><circle cx="16" cy="14" r="1"/></>,
+    money: <><circle cx="12" cy="12" r="9"/><path d="M9 14c0 1 1 2 3 2s3-.7 3-2-1-1.5-3-2-3-1-3-2 1-2 3-2 3 .7 3 2"/><line x1="12" y1="6" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="18"/></>,
+    star: <><polygon points="12 3 14.6 8.6 21 9.5 16.5 14 17.6 20.5 12 17.4 6.4 20.5 7.5 14 3 9.5 9.4 8.6 12 3"/></>,
+    heart: <><path d="M20.8 5.6a5 5 0 0 0-7-.6L12 6.5l-1.8-1.5a5 5 0 0 0-7 7l8.8 8 8.8-8a5 5 0 0 0 0-6.4z"/></>,
+    photo: <><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><polyline points="3 17 9 11 13 15 17 12 21 17"/></>,
+    lock: <><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></>,
+    eye: <><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></>,
+    share: <><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><line x1="8" y1="11" x2="16" y2="7"/><line x1="8" y1="13" x2="16" y2="17"/></>,
+    edit: <><path d="M16 3l5 5-12 12H4v-5z"/></>,
+    publish: <><path d="M12 19V5"/><polyline points="6 11 12 5 18 11"/><line x1="4" y1="21" x2="20" y2="21"/></>,
+    sparkle: <><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z"/><path d="M19 16l.7 2.3L22 19l-2.3.7L19 22l-.7-2.3L16 19l2.3-.7z"/></>,
+    bolt: <><polygon points="13 3 4 14 12 14 11 21 20 10 12 10"/></>,
+    chart: <><path d="M3 21h18"/><rect x="6" y="13" width="3" height="6"/><rect x="11" y="9" width="3" height="10"/><rect x="16" y="5" width="3" height="14"/></>,
+    pipeline: <><rect x="3" y="4" width="4" height="16" rx="1"/><rect x="10" y="8" width="4" height="12" rx="1"/><rect x="17" y="12" width="4" height="8" rx="1"/></>,
+    target: <><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></>,
+    wifi: <><path d="M5 12a10 10 0 0 1 14 0"/><path d="M8.5 15.5a5 5 0 0 1 7 0"/><circle cx="12" cy="19" r="1" fill="currentColor"/></>,
+    pool: <><path d="M3 16c2 0 2-1 4-1s2 1 4 1 2-1 4-1 2 1 4 1"/><path d="M3 20c2 0 2-1 4-1s2 1 4 1 2-1 4-1 2 1 4 1"/><path d="M7 13V6a2 2 0 0 1 4 0v7M13 13V6a2 2 0 0 1 4 0v7"/></>,
+    shield: <><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><polyline points="9 12 11 14 15 10"/></>,
+    elevator: <><rect x="5" y="3" width="14" height="18" rx="1.5"/><polyline points="9 9 12 6 15 9"/><polyline points="9 15 12 18 15 15"/></>,
+    cube: <><path d="M12 3l8 4v10l-8 4-8-4V7z"/><polyline points="4 7 12 11 20 7"/><line x1="12" y1="11" x2="12" y2="21"/></>,
+    filter: <><path d="M3 5h18l-7 8v6l-4 2v-8z"/></>,
+    dots: <><circle cx="6" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="18" cy="12" r="1.5" fill="currentColor"/></>,
+  };
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...rest}>
+      {paths[name]}
+    </svg>
+  );
+};
+
+const PROPERTY_PHOTOS = [
+  'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=900&q=80',
+  'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=900&q=80',
+  'https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?w=900&q=80',
+  'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=900&q=80',
+  'https://images.unsplash.com/photo-1605276374104-dee2a0ed3cd6?w=900&q=80',
+  'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=900&q=80',
+  'https://images.unsplash.com/photo-1567496898669-ee935f5f647a?w=900&q=80',
+  'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=900&q=80',
+];
+
+const AVATARS = [
+  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80',
+  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&q=80',
+  'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&q=80',
+  'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&q=80',
+  'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&q=80',
+  'https://images.unsplash.com/photo-1607746882042-944635dfe10e?w=200&q=80',
+  'https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?w=200&q=80',
+  'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&q=80',
+];
+
+const LEADS = {
+  nuevo: [
+    { id: 1, name: 'Sofía Ramírez', zone: 'Zona Norte', budget: '$320K', type: 'Apartamento', avatar: AVATARS[0] },
+    { id: 2, name: 'Juan Carlos Vega', zone: 'Centro', budget: '$180K', type: 'Casa', avatar: AVATARS[5] },
+    { id: 3, name: 'Lucía Mendoza', zone: 'Costa Este', budget: '$540K', type: 'Penthouse', avatar: AVATARS[1] },
+  ],
+  contactado: [
+    { id: 4, name: 'Diego Fernández', zone: 'Bella Vista', budget: '$240K', type: 'Apartamento', avatar: AVATARS[2] },
+    { id: 5, name: 'Ana Patricia Cruz', zone: 'Zona Norte', budget: '$410K', type: 'Casa', avatar: AVATARS[6] },
+  ],
+  visita: [
+    { id: 6, name: 'Roberto Silva', zone: 'Punta Cana', budget: '$680K', type: 'Villa', avatar: AVATARS[3] },
+    { id: 7, name: 'María Elena Ortiz', zone: 'Naco', budget: '$295K', type: 'Apartamento', avatar: AVATARS[7] },
+    { id: 8, name: 'Felipe Castro', zone: 'Piantini', budget: '$520K', type: 'Penthouse', avatar: AVATARS[4] },
+  ],
+  negociacion: [
+    { id: 9, name: 'Carla Jiménez', zone: 'Mirador Sur', budget: '$390K', type: 'Casa', avatar: AVATARS[1] },
+    { id: 10, name: 'Andrés Peña', zone: 'Bávaro', budget: '$450K', type: 'Apartamento', avatar: AVATARS[5] },
+  ],
+  cierre: [
+    { id: 11, name: 'Valentina Soto', zone: 'Anacaona', budget: '$720K', type: 'Penthouse', avatar: AVATARS[0] },
+  ],
+};
+
+const PROPERTIES = [
+  { id: 1, photo: PROPERTY_PHOTOS[0], price: '$485,000', type: 'Penthouse', title: 'Penthouse con vista al mar', loc: 'Cap Cana, Punta Cana', beds: 3, baths: 3.5, sqm: 280, status: 'active', shared: true, photos: 24 },
+  { id: 2, photo: PROPERTY_PHOTOS[1], price: '$320,000', type: 'Apartamento', title: 'Torre Vista Real · Piso 18', loc: 'Piantini, Santo Domingo', beds: 3, baths: 2, sqm: 180, status: 'active', photos: 18 },
+  { id: 3, photo: PROPERTY_PHOTOS[2], price: '$610,000', type: 'Villa', title: 'Villa con piscina infinita', loc: 'Casa de Campo, La Romana', beds: 5, baths: 5, sqm: 520, status: 'active', shared: true, photos: 32 },
+  { id: 4, photo: PROPERTY_PHOTOS[3], price: '$245,000', type: 'Apartamento', title: 'Loft moderno en Naco', loc: 'Naco, Santo Domingo', beds: 2, baths: 2, sqm: 120, status: 'draft', photos: 12 },
+  { id: 5, photo: PROPERTY_PHOTOS[4], price: '$890,000', type: 'Penthouse', title: 'Penthouse Anacaona doble altura', loc: 'Anacaona, Santo Domingo', beds: 4, baths: 4.5, sqm: 380, status: 'active', shared: true, photos: 28 },
+  { id: 6, photo: PROPERTY_PHOTOS[5], price: '$195,000', type: 'Casa', title: 'Casa familiar en Bella Vista', loc: 'Bella Vista, Santo Domingo', beds: 4, baths: 3, sqm: 220, status: 'active', photos: 16 },
+  { id: 7, photo: PROPERTY_PHOTOS[6], price: '$420,000', type: 'Apartamento', title: 'Apto. moderno en Mirador', loc: 'Mirador Sur, Santo Domingo', beds: 3, baths: 2.5, sqm: 195, status: 'draft', photos: 14 },
+  { id: 8, photo: PROPERTY_PHOTOS[7], price: '$560,000', type: 'Villa', title: 'Villa en primera línea de playa', loc: 'Bávaro, Punta Cana', beds: 4, baths: 4, sqm: 340, status: 'active', shared: true, photos: 22 },
+];
+
+Object.assign(window, { I18N, Icon, PROPERTY_PHOTOS, AVATARS, LEADS, PROPERTIES });
+
+// ═══════════════════════════════════════════════════════════
+// shell
+// ═══════════════════════════════════════════════════════════
+const Sidebar = ({ active, setRoute, t }) => {
+  const items = [
+    { id: 'landing', label: t.nav_landing, icon: 'home' },
+    { id: 'dashboard', label: t.nav_dashboard, icon: 'dashboard' },
+    { id: 'leads', label: t.nav_leads, icon: 'users', badge: '12' },
+    { id: 'properties', label: t.nav_properties, icon: 'building' },
+    { id: 'detail', label: 'Detalle', icon: 'photo', hidden: true },
+  ];
+  const secondary = [
+    { id: 'tasks', label: t.nav_tasks, icon: 'tasks' },
+    { id: 'network', label: t.nav_network, icon: 'network' },
+    { id: 'brochures', label: t.nav_brochures, icon: 'brochure' },
+    { id: 'settings', label: t.nav_settings, icon: 'settings' },
+  ];
+  return (
+    <aside className="sidebar">
+      <div className="sidebar__brand">
+        <div className="sidebar__logo">P</div>
+        <div>
+          <div className="sidebar__name">PropFlow</div>
+          <div className="sidebar__tag">by Rand</div>
+        </div>
+      </div>
+      <div className="sidebar__nav">
+        {items.filter(i => !i.hidden).map(i => (
+          <button key={i.id}
+            className={'sidebar__item' + (active === i.id || (i.id === 'properties' && active === 'detail') ? ' sidebar__item--active' : '')}
+            onClick={() => setRoute(i.id)}>
+            <Icon name={i.icon} className="sidebar__item-icon" />
+            <span>{i.label}</span>
+            {i.badge && <span className="sidebar__badge">{i.badge}</span>}
+          </button>
+        ))}
+      </div>
+      <div className="sidebar__section">Workspace</div>
+      <div className="sidebar__nav">
+        {secondary.map(i => (
+          <button key={i.id} className="sidebar__item" onClick={() => setRoute(i.id)}>
+            <Icon name={i.icon} className="sidebar__item-icon" />
+            <span>{i.label}</span>
+          </button>
+        ))}
+      </div>
+      <div className="sidebar__user">
+        <div className="sidebar__avatar" style={{ backgroundImage: `url(${window.AVATARS[0]})` }} />
+        <div className="sidebar__user-info">
+          <div className="sidebar__user-name">Carolina Méndez</div>
+          <div className="sidebar__user-role">Agente Senior</div>
+        </div>
+      </div>
+    </aside>
+  );
+};
+
+const Topbar = ({ title, subtitle, actions }) => (
+  <header className="topbar">
+    <div>
+      <div className="topbar__title">{title}</div>
+      {subtitle && <div className="topbar__sub">{subtitle}</div>}
+    </div>
+    <div className="topbar__search">
+      <Icon name="search" size={16} />
+      <span>Buscar propiedades, leads, agentes…</span>
+    </div>
+    <div className="topbar__icons">
+      <button className="topbar__icon"><Icon name="bell" size={18} /><span className="topbar__icon-dot" /></button>
+      <button className="topbar__icon"><Icon name="sparkle" size={18} /></button>
+    </div>
+    {actions}
+  </header>
+);
+
+const Reveal = ({ delay, children, as: Tag = 'div', ...rest }) => {
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          el.classList.add('is-visible');
+          io.unobserve(el);
+        }
+      });
+    }, { threshold: 0.12 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  return <Tag ref={ref} className={'reveal' + (delay ? ` reveal--delay-${delay}` : '')} {...rest}>{children}</Tag>;
+};
+
+const Counter = ({ to, suffix = '', duration = 1600 }) => {
+  const [val, setVal] = React.useState(0);
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let raf;
+    const io = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        const start = performance.now();
+        const tick = (now) => {
+          const t = Math.min(1, (now - start) / duration);
+          const eased = 1 - Math.pow(1 - t, 3);
+          setVal(Math.round(to * eased));
+          if (t < 1) raf = requestAnimationFrame(tick);
+        };
+        raf = requestAnimationFrame(tick);
+        io.disconnect();
+      }
+    }, { threshold: 0.4 });
+    io.observe(el);
+    return () => { io.disconnect(); if (raf) cancelAnimationFrame(raf); };
+  }, [to, duration]);
+  return <span ref={ref}>{val.toLocaleString()}{suffix}</span>;
+};
+
+Object.assign(window, { Sidebar, Topbar, Reveal, Counter });
+
+// ═══════════════════════════════════════════════════════════
+// landing
+// ═══════════════════════════════════════════════════════════
+const Landing = ({ t, setRoute }) => {
+  return (
+    <div className="landing page">
+      {/* NAV */}
+      <nav className="landing__nav">
+        <div className="landing__nav-inner">
+          <div className="landing__brand">
+            <div className="landing__brand-mark">P</div>
+            PropFlow
+          </div>
+          <div className="landing__nav-links">
+            <a className="landing__nav-link" href="#features">{t.nav_features}</a>
+            <a className="landing__nav-link" href="#stats">{t.nav_clients}</a>
+            <a className="landing__nav-link" href="#pricing">{t.nav_pricing}</a>
+          </div>
+          <div className="landing__nav-cta">
+            <button className="btn btn--ghost btn--sm" onClick={() => setRoute('dashboard')}>{t.nav_login}</button>
+            <button className="btn btn--primary btn--sm" onClick={() => setRoute('dashboard')}>{t.cta_demo}</button>
+          </div>
+        </div>
+      </nav>
+
+      {/* HERO */}
+      <section className="hero">
+        <div className="hero__visual-bg" />
+        <div className="hero__inner">
+          <div>
+            <Reveal>
+              <div className="hero__pill">
+                <span className="hero__pill-tag">{t.hero_pill_tag}</span>
+                {t.hero_pill}
+              </div>
+            </Reveal>
+            <Reveal delay={1}>
+              <h1 className="hero__title">
+                {t.hero_title_a} <span className="highlight-yellow">{t.hero_title_b}</span> {t.hero_title_c}
+              </h1>
+            </Reveal>
+            <Reveal delay={2}>
+              <p className="hero__sub">{t.hero_sub}</p>
+            </Reveal>
+            <Reveal delay={3}>
+              <div className="hero__cta-row">
+                <button className="btn btn--primary btn--lg" onClick={() => setRoute('dashboard')}>
+                  {t.cta_demo} <Icon name="arrow_right" size={16} />
+                </button>
+                <button className="btn btn--outline btn--lg">{t.cta_features}</button>
+              </div>
+            </Reveal>
+            <Reveal delay={4}>
+              <div className="hero__feature-pills">
+                {[t.feat_pill_1, t.feat_pill_2, t.feat_pill_3, t.feat_pill_4, t.feat_pill_5].map((p, i) => (
+                  <span key={i} className="hero__pill-feature">
+                    <Icon name="check" size={12} /> {p}
+                  </span>
+                ))}
+              </div>
+            </Reveal>
+          </div>
+
+          {/* Hero visual */}
+          <div className="hero__visual">
+            <div className="hero__dashboard-card hero__dashboard-main">
+              <div className="mini-dash__topbar">
+                <div className="mini-dash__dot"></div>
+                <div className="mini-dash__dot"></div>
+                <div className="mini-dash__dot"></div>
+                <div className="mini-dash__url">app.propflow.io/dashboard</div>
+              </div>
+              <div className="mini-dash__body">
+                <div className="mini-dash__title">{t.dash_greeting} 👋</div>
+                <div className="mini-dash__stats">
+                  <div className="mini-dash__stat">
+                    <div className="mini-dash__stat-label">Leads</div>
+                    <div className="mini-dash__stat-value">47</div>
+                  </div>
+                  <div className="mini-dash__stat">
+                    <div className="mini-dash__stat-label">Activas</div>
+                    <div className="mini-dash__stat-value">128</div>
+                  </div>
+                  <div className="mini-dash__stat">
+                    <div className="mini-dash__stat-label">Cierres</div>
+                    <div className="mini-dash__stat-value">9</div>
+                  </div>
+                </div>
+                <div className="mini-dash__bars">
+                  {[35, 55, 42, 68, 80, 60, 75, 90, 72, 85, 95, 78].map((h, i) => (
+                    <div key={i} className="mini-dash__bar" style={{ height: h + '%' }} />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="hero__dashboard-card hero__stat-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <div className="stat-card__icon stat-card__icon--green"><Icon name="arrow_up" size={16} /></div>
+                <span className="stat-card__delta stat-card__delta--up">+24%</span>
+              </div>
+              <div className="stat-card__value">$1.2M</div>
+              <div className="stat-card__label">Pipeline activo</div>
+            </div>
+
+            <div className="hero__dashboard-card hero__lead-card">
+              <div className="lead-card__head">
+                <div className="lead-card__avatar" style={{ backgroundImage: `url(${window.AVATARS[1]})` }} />
+                <div>
+                  <div className="lead-card__name">Lucía Mendoza</div>
+                  <div className="lead-card__zone">Costa Este · Penthouse</div>
+                </div>
+              </div>
+              <div className="lead-card__budget">$540K</div>
+              <div style={{ fontSize: 11, color: 'var(--ink-500)', marginTop: 4 }}>Visita programada · Mañana 4:00pm</div>
+            </div>
+
+            <div className="hero__mobile">
+              <div className="mobile-mock">
+                <div className="mobile-mock__screen">
+                  <div className="mobile-mock__notch"><div className="mobile-mock__notch-pill" /></div>
+                  <div className="mobile-mock__content">
+                    <div className="mobile-mock__head">
+                      <div>
+                        <div className="mobile-mock__greet">{t.m_morning}</div>
+                        <div className="mobile-mock__name">Carolina</div>
+                      </div>
+                      <div className="mobile-mock__avatar" />
+                    </div>
+                    <div className="mobile-mock__card">
+                      <div className="mobile-mock__card-label">{t.m_pipeline}</div>
+                      <div className="mobile-mock__card-value">$1.2M</div>
+                    </div>
+                    <div className="mobile-mock__card">
+                      <div className="mobile-mock__card-label">{t.m_leads} · {t.today}</div>
+                      <div className="mobile-mock__card-value">12</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                      <div style={{ flex: 1, height: 24, background: 'var(--rand-red)', borderRadius: 6 }} />
+                      <div style={{ width: 24, height: 24, background: 'var(--bg-tint)', borderRadius: 6 }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* STATS STRIP */}
+      <section className="strip-stats" id="stats">
+        <div className="strip-stats__inner">
+          <Reveal as="div" className="reveal strip-stat">
+            <div className="strip-stat__num"><Counter to={2400} suffix="+" /></div>
+            <div className="strip-stat__label">{t.stat_1_label}</div>
+          </Reveal>
+          <Reveal delay={1} as="div" className="reveal strip-stat">
+            <div className="strip-stat__num"><Counter to={48000} suffix="+" /></div>
+            <div className="strip-stat__label">{t.stat_2_label}</div>
+          </Reveal>
+          <Reveal delay={2} as="div" className="reveal strip-stat">
+            <div className="strip-stat__num"><Counter to={1280} suffix="+" /></div>
+            <div className="strip-stat__label">{t.stat_3_label}</div>
+          </Reveal>
+          <Reveal delay={3} as="div" className="reveal strip-stat">
+            <div className="strip-stat__num"><Counter to={38} /><span className="unit">%</span></div>
+            <div className="strip-stat__label">{t.stat_4_label}</div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* FEATURES */}
+      <section className="section" id="features">
+        <div className="section__inner">
+          <div className="section__head">
+            <Reveal><span className="eyebrow">{t.feat_eyebrow}</span></Reveal>
+            <Reveal delay={1}><h2 className="h2">{t.feat_title}</h2></Reveal>
+            <Reveal delay={2}><p className="muted">{t.feat_sub}</p></Reveal>
+          </div>
+          <div className="features">
+            {[
+              { icon: 'pipeline', title: t.f1_title, desc: t.f1_desc },
+              { icon: 'building', title: t.f2_title, desc: t.f2_desc },
+              { icon: 'network', title: t.f3_title, desc: t.f3_desc },
+              { icon: 'brochure', title: t.f4_title, desc: t.f4_desc },
+              { icon: 'bolt', title: t.f5_title, desc: t.f5_desc },
+              { icon: 'chart', title: t.f6_title, desc: t.f6_desc },
+            ].map((f, i) => (
+              <Reveal key={i} delay={(i % 3) + 1} as="div" className="reveal feature">
+                <div className="feature__icon"><Icon name={f.icon} size={22} /></div>
+                <div className="feature__title">{f.title}</div>
+                <div className="feature__desc">{f.desc}</div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="cta-section">
+        <Reveal><h2 className="h2">{t.cta_section_title}</h2></Reveal>
+        <Reveal delay={1}><p className="muted">{t.cta_section_sub}</p></Reveal>
+        <Reveal delay={2}>
+          <button className="btn btn--primary btn--lg" onClick={() => setRoute('dashboard')}>
+            {t.cta_section_btn} <Icon name="arrow_right" size={16} />
+          </button>
+        </Reveal>
+      </section>
+
+      {/* FOOTER */}
+      <footer className="footer">
+        <div className="footer__inner">
+          <div className="footer__brand-block">
+            <div className="landing__brand" style={{ color: '#fff', marginBottom: 16 }}>
+              <div className="landing__brand-mark" style={{ background: 'var(--rand-red)' }}>P</div>
+              PropFlow
+            </div>
+            <div>{t.footer_tag}</div>
+          </div>
+          <div className="footer__col">
+            <div className="footer__col-title">{t.footer_product}</div>
+            <a href="#">{t.nav_features}</a>
+            <a href="#">{t.nav_pricing}</a>
+            <a href="#">CRM</a>
+            <a href="#">Brochures</a>
+          </div>
+          <div className="footer__col">
+            <div className="footer__col-title">{t.footer_company}</div>
+            <a href="#">About</a>
+            <a href="#">Blog</a>
+            <a href="#">Careers</a>
+          </div>
+          <div className="footer__col">
+            <div className="footer__col-title">{t.footer_resources}</div>
+            <a href="#">Help</a>
+            <a href="#">API</a>
+            <a href="#">Status</a>
+          </div>
+        </div>
+        <div className="footer__bottom">
+          <div>{t.footer_rights}</div>
+          <div>v1.0 · Powered by Rand</div>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+window.Landing = Landing;
+
+// ═══════════════════════════════════════════════════════════
+// dashboard
+// ═══════════════════════════════════════════════════════════
+const Dashboard = ({ t, setRoute, openProperty }) => {
+  const [tasksDone, setTasksDone] = React.useState({ 2: false, 3: false });
+  const toggleTask = (id) => setTasksDone(p => ({ ...p, [id]: !p[id] }));
+
+  const stats = [
+    { icon: 'users', tone: 'blue', value: 47, label: t.stat_leads, delta: '+18%', up: true },
+    { icon: 'building', tone: 'purple', value: 128, label: t.stat_properties, delta: '+6', up: true },
+    { icon: 'tasks', tone: 'yellow', value: 8, label: t.stat_tasks, delta: '3 ahora', up: false, neutral: true },
+    { icon: 'star', tone: 'green', value: 9, label: t.stat_closings, delta: '+24%', up: true },
+  ];
+
+  const funnel = [
+    { label: t.funnel_new, count: 47, pct: 100, color: '#3B82F6' },
+    { label: t.funnel_contacted, count: 32, pct: 78, color: '#6366F1' },
+    { label: t.funnel_visit, count: 21, pct: 58, color: '#8B5CF6' },
+    { label: t.funnel_negotiation, count: 12, pct: 36, color: '#EC4899' },
+    { label: t.funnel_closing, count: 5, pct: 18, color: '#E11D2A' },
+  ];
+
+  const activity = [
+    { photo: window.PROPERTY_PHOTOS[0], title: 'Penthouse con vista al mar — compartida con Diego F.', meta: 'Cap Cana · $485,000', time: 'hace 12m' },
+    { photo: window.PROPERTY_PHOTOS[2], title: 'Villa con piscina infinita — nueva visita programada', meta: 'Casa de Campo · $610,000', time: 'hace 1h' },
+    { photo: window.PROPERTY_PHOTOS[4], title: 'Penthouse Anacaona — brochure enviado a Lucía M.', meta: 'Anacaona · $890,000', time: 'hace 3h' },
+    { photo: window.PROPERTY_PHOTOS[1], title: 'Torre Vista Real — publicada en portal externo', meta: 'Piantini · $320,000', time: 'hace 5h' },
+  ];
+
+  const tasks = [
+    { id: 1, title: 'Llamar a Sofía Ramírez · cierre Cap Cana', time: '10:30 · hoy', priority: 'high' },
+    { id: 2, title: 'Enviar brochure a Roberto Silva', time: '12:00 · hoy', priority: 'med' },
+    { id: 3, title: 'Visita con Lucía Mendoza · Penthouse Anacaona', time: '16:00 · hoy', priority: 'high' },
+    { id: 4, title: 'Renovar contrato propietario · Villa Bávaro', time: 'mañana', priority: 'low' },
+    { id: 5, title: 'Coordinar fotos profesionales · Loft Naco', time: 'mañana', priority: 'med' },
+  ];
+
+  return (
+    <div className="page">
+      <Topbar
+        title={t.dash_greeting + ' 👋'}
+        subtitle={t.dash_subtitle}
+        actions={
+          <button className="btn btn--primary"><Icon name="plus" size={16} /> {t.new_property_btn}</button>
+        }
+      />
+      <div className="content">
+        <div className="stat-grid">
+          {stats.map((s, i) => (
+            <Reveal key={i} delay={i + 1} as="div" className="reveal stat-card">
+              <div className="stat-card__head">
+                <div className={`stat-card__icon stat-card__icon--${s.tone}`}><Icon name={s.icon} size={18} /></div>
+                <span className={`stat-card__delta ${s.neutral ? '' : (s.up ? 'stat-card__delta--up' : 'stat-card__delta--down')}`}>
+                  {!s.neutral && (s.up ? '▲ ' : '▼ ')}{s.delta}
+                </span>
+              </div>
+              <div className="stat-card__value"><Counter to={s.value} /></div>
+              <div className="stat-card__label">{s.label}</div>
+              <svg className="stat-card__spark" viewBox="0 0 80 36" preserveAspectRatio="none">
+                <path d={`M0,30 Q15,${20 + i * 2} 30,${24 - i} T60,${15 - i * 2} T80,${10 + i}`} fill="none" stroke={`var(--accent)`} strokeWidth="2" />
+              </svg>
+            </Reveal>
+          ))}
+        </div>
+
+        <div className="dash-grid">
+          <Reveal as="div" className="reveal panel">
+            <div className="panel__head">
+              <div>
+                <div className="panel__title">{t.funnel_title}</div>
+                <div className="panel__sub">{t.funnel_sub}</div>
+              </div>
+              <button className="btn btn--ghost btn--sm" onClick={() => setRoute('leads')}>{t.view_all} <Icon name="arrow_right" size={14} /></button>
+            </div>
+            <div className="funnel">
+              {funnel.map((f, i) => (
+                <div key={i} className="funnel__row">
+                  <div className="funnel__label">{f.label}</div>
+                  <div className="funnel__bar" style={{ width: f.pct + '%', background: f.color }}>
+                    {f.count} leads
+                  </div>
+                  <div className="funnel__count">{f.pct}%</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="panel__head" style={{ marginTop: 28, marginBottom: 16 }}>
+              <div>
+                <div className="panel__title">{t.activity_title}</div>
+              </div>
+            </div>
+            <div className="activity">
+              {activity.map((a, i) => (
+                <div key={i} className="activity__item">
+                  <div className="activity__thumb" style={{ backgroundImage: `url(${a.photo})` }} />
+                  <div className="activity__body">
+                    <div className="activity__title">{a.title}</div>
+                    <div className="activity__meta">{a.meta}</div>
+                  </div>
+                  <div className="activity__time">{a.time}</div>
+                </div>
+              ))}
+            </div>
+          </Reveal>
+
+          <Reveal delay={2} as="div" className="reveal panel">
+            <div className="panel__head">
+              <div>
+                <div className="panel__title">{t.tasks_title}</div>
+                <div className="panel__sub">{t.tasks_sub}</div>
+              </div>
+              <button className="btn btn--ghost btn--icon btn--sm"><Icon name="plus" size={14} /></button>
+            </div>
+            <div className="task-list">
+              {tasks.map(task => (
+                <div key={task.id} className={'task-item' + (tasksDone[task.id] ? ' is-done' : '')}>
+                  <div className={`task-priority task-priority--${task.priority}`} />
+                  <div className={'task-check' + (tasksDone[task.id] ? ' is-done' : '')} onClick={() => toggleTask(task.id)}>
+                    {tasksDone[task.id] && <Icon name="check" size={12} />}
+                  </div>
+                  <div className="task-title">{task.title}</div>
+                  <div className="task-time">{task.time}</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ marginTop: 20, padding: 18, background: 'var(--rand-navy)', borderRadius: 14, color: '#fff', backgroundImage: 'radial-gradient(ellipse at top right, rgba(225,29,42,0.25), transparent 60%)' }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, marginBottom: 4 }}>
+                <span className="highlight-yellow" style={{ color: 'var(--rand-navy)' }}>3 leads</span> sin contactar
+              </div>
+              <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.65)', marginBottom: 14 }}>Asígnalos antes que se enfríen.</div>
+              <button className="btn btn--primary btn--sm" onClick={() => setRoute('leads')}>Ir al pipeline <Icon name="arrow_right" size={12} /></button>
+            </div>
+          </Reveal>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+window.Dashboard = Dashboard;
+
+// ═══════════════════════════════════════════════════════════
+// crm
+// ═══════════════════════════════════════════════════════════
+const LeadCard = ({ lead, t }) => (
+  <div className="lead-card">
+    <div className="lead-card__head">
+      <div className="lead-card__avatar" style={{ backgroundImage: `url(${lead.avatar})` }} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="lead-card__name">{lead.name}</div>
+        <div className="lead-card__zone">{lead.zone}</div>
+      </div>
+    </div>
+    <div className="lead-card__meta">
+      <div className="lead-card__meta-row">
+        <Icon name="building" size={13} />
+        <span>{lead.type}</span>
+      </div>
+      <div className="lead-card__meta-row">
+        <Icon name="money" size={13} />
+        <span className="lead-card__budget">{lead.budget}</span>
+      </div>
+    </div>
+    <div className="lead-card__actions">
+      <button className="lead-action lead-action--call"><Icon name="phone" size={12} />{t.lead_call}</button>
+      <button className="lead-action lead-action--whatsapp"><Icon name="whatsapp" size={12} />WhatsApp</button>
+      <button className="lead-action"><Icon name="send" size={12} />{t.lead_send}</button>
+    </div>
+  </div>
+);
+
+const Crm = ({ t }) => {
+  const cols = [
+    { key: 'nuevo', label: t.funnel_new, color: '#3B82F6' },
+    { key: 'contactado', label: t.funnel_contacted, color: '#6366F1' },
+    { key: 'visita', label: t.funnel_visit, color: '#8B5CF6' },
+    { key: 'negociacion', label: t.funnel_negotiation, color: '#EC4899' },
+    { key: 'cierre', label: t.funnel_closing, color: '#E11D2A' },
+  ];
+
+  return (
+    <div className="page">
+      <Topbar
+        title={t.crm_title}
+        subtitle={t.crm_sub}
+        actions={
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn--outline btn--sm"><Icon name="filter" size={14} />{t.crm_filter}</button>
+            <button className="btn btn--primary"><Icon name="plus" size={16} />{t.crm_new_lead}</button>
+          </div>
+        }
+      />
+      <div className="content">
+        <Reveal>
+          <div className="kanban">
+            {cols.map((c, i) => (
+              <div key={c.key} className="kanban__col">
+                <div className="kanban__col-head">
+                  <div className="kanban__col-pip" style={{ background: c.color }} />
+                  <div className="kanban__col-title">{c.label}</div>
+                  <span className="kanban__col-count">{LEADS[c.key].length}</span>
+                  <button className="kanban__col-add"><Icon name="plus" size={12} /></button>
+                </div>
+                {LEADS[c.key].map(lead => <LeadCard key={lead.id} lead={lead} t={t} />)}
+              </div>
+            ))}
+          </div>
+        </Reveal>
+      </div>
+    </div>
+  );
+};
+
+window.Crm = Crm;
+
+// ═══════════════════════════════════════════════════════════
+// properties
+// ═══════════════════════════════════════════════════════════
+const Properties = ({ t, openProperty }) => {
+  const [tab, setTab] = React.useState('all');
+  const tabs = [
+    { id: 'all', label: t.prop_all },
+    { id: 'active', label: t.prop_active },
+    { id: 'shared', label: t.prop_shared },
+    { id: 'draft', label: t.prop_drafts },
+  ];
+  const filtered = window.PROPERTIES.filter(p => {
+    if (tab === 'all') return true;
+    if (tab === 'shared') return p.shared;
+    return p.status === tab;
+  });
+
+  return (
+    <div className="page">
+      <Topbar
+        title={t.prop_title}
+        subtitle={t.prop_sub}
+        actions={
+          <button className="btn btn--primary"><Icon name="plus" size={16} />{t.new_property_btn}</button>
+        }
+      />
+      <div className="content">
+        <div className="prop-toolbar">
+          <div className="prop-tabs">
+            {tabs.map(tb => (
+              <button key={tb.id}
+                className={'prop-tab' + (tab === tb.id ? ' prop-tab--active' : '')}
+                onClick={() => setTab(tb.id)}>
+                {tb.label}
+              </button>
+            ))}
+          </div>
+          <button className="btn btn--outline btn--sm" style={{ marginLeft: 'auto' }}><Icon name="filter" size={14} /> Filtrar</button>
+          <button className="btn btn--ghost btn--icon btn--sm"><Icon name="dots" size={14} /></button>
+        </div>
+
+        <div className="prop-grid">
+          {filtered.map((p, i) => (
+            <Reveal key={p.id} delay={(i % 4) + 1} as="div" className="reveal prop-card" onClick={() => openProperty(p)}>
+              <div className="prop-card__photo" style={{ backgroundImage: `url(${p.photo})` }}>
+                <div className="prop-card__photo-tags">
+                  {p.status === 'active' && <span className="badge badge--success badge--dot">{t.badge_active}</span>}
+                  {p.status === 'draft' && <span className="badge badge--warning badge--dot">{t.badge_draft}</span>}
+                  {p.shared && <span className="badge badge--info badge--dot">{t.badge_shared}</span>}
+                </div>
+                <button className="prop-card__fav" onClick={(e) => e.stopPropagation()}><Icon name="heart" size={16} /></button>
+                <div className="prop-card__photo-count"><Icon name="photo" size={11} />{p.photos}</div>
+              </div>
+              <div className="prop-card__body">
+                <div className="prop-card__price-row">
+                  <div className="prop-card__price">{p.price}</div>
+                  <div className="prop-card__type">{p.type}</div>
+                </div>
+                <div className="prop-card__title">{p.title}</div>
+                <div className="prop-card__loc"><Icon name="location" size={12} />{p.loc}</div>
+                <div className="prop-card__specs">
+                  <div className="prop-spec"><Icon name="bed" size={14} />{p.beds} {t.bedrooms}</div>
+                  <div className="prop-spec"><Icon name="bath" size={14} />{p.baths} {t.bathrooms}</div>
+                  <div className="prop-spec"><Icon name="sqm" size={14} />{p.sqm} {t.sqm}</div>
+                </div>
+              </div>
+              <div className="prop-card__actions" onClick={(e) => e.stopPropagation()}>
+                <button className="btn btn--ghost"><Icon name="brochure" size={12} />{t.prop_action_brochure}</button>
+                <button className="btn btn--ghost"><Icon name="share" size={12} />{t.prop_action_share}</button>
+                <button className="btn btn--ghost"><Icon name="publish" size={12} />{t.prop_action_publish}</button>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+window.Properties = Properties;
+
+// ═══════════════════════════════════════════════════════════
+// detail
+// ═══════════════════════════════════════════════════════════
+const Detail = ({ t, property, setRoute }) => {
+  const p = property || window.PROPERTIES[0];
+  const [shareSettings, setShareSettings] = React.useState({
+    photos: true, location: true, owner: false, price: true, brochure: true,
+  });
+  const toggle = (k) => setShareSettings(s => ({ ...s, [k]: !s[k] }));
+
+  const galleryImgs = [
+    p.photo,
+    window.PROPERTY_PHOTOS[1],
+    window.PROPERTY_PHOTOS[5],
+    window.PROPERTY_PHOTOS[2],
+    window.PROPERTY_PHOTOS[4],
+  ];
+
+  const amenities = [
+    { icon: 'pool', label: t.amen_pool },
+    { icon: 'cube', label: t.amen_gym },
+    { icon: 'shield', label: t.amen_security },
+    { icon: 'car', label: t.amen_parking },
+    { icon: 'elevator', label: t.amen_elevator },
+    { icon: 'building', label: t.amen_terrace },
+    { icon: 'wifi', label: t.amen_smart },
+    { icon: 'pool', label: t.amen_jacuzzi },
+  ];
+
+  return (
+    <div className="page">
+      <Topbar
+        title={p.title}
+        subtitle={<><Icon name="location" size={12} style={{ verticalAlign: 'middle' }} /> {p.loc} · {p.type}</>}
+        actions={
+          <button className="btn btn--ghost btn--sm" onClick={() => setRoute('properties')}>
+            <Icon name="arrow_left" size={14} /> {t.detail_back}
+          </button>
+        }
+      />
+      <div className="content">
+        <div className="detail-grid">
+          <div>
+            <Reveal>
+              <div className="gallery">
+                <div className="gallery__img gallery__img--main" style={{ backgroundImage: `url(${galleryImgs[0]})` }} />
+                <div className="gallery__img" style={{ backgroundImage: `url(${galleryImgs[1]})` }} />
+                <div className="gallery__img" style={{ backgroundImage: `url(${galleryImgs[2]})` }} />
+                <div className="gallery__img" style={{ backgroundImage: `url(${galleryImgs[3]})` }} />
+                <div className="gallery__img" style={{ backgroundImage: `url(${galleryImgs[4]})`, position: 'relative' }}>
+                  <div style={{ position: 'absolute', inset: 0, background: 'rgba(11,27,58,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 600, fontSize: 14, gap: 6 }}>
+                    <Icon name="photo" size={16} /> +{p.photos - 5} fotos
+                  </div>
+                </div>
+              </div>
+            </Reveal>
+
+            <Reveal delay={1}>
+              <div className="detail__title-block">
+                <div className="detail__price-line">
+                  <div className="detail__price">{p.price}</div>
+                  <span className="badge badge--success badge--dot">{t.badge_active}</span>
+                  {p.shared && <span className="badge badge--info badge--dot">{t.badge_shared}</span>}
+                </div>
+                <div className="detail__title">{p.title}</div>
+                <div className="detail__loc"><Icon name="location" size={14} />{p.loc}</div>
+              </div>
+            </Reveal>
+
+            <Reveal delay={2}>
+              <div className="detail__specs-row">
+                <div className="detail-spec">
+                  <div className="detail-spec__icon"><Icon name="bed" size={20} /></div>
+                  <div>
+                    <div className="detail-spec__label">{t.detail_specs_label_beds}</div>
+                    <div className="detail-spec__value">{p.beds}</div>
+                  </div>
+                </div>
+                <div className="detail-spec">
+                  <div className="detail-spec__icon"><Icon name="bath" size={20} /></div>
+                  <div>
+                    <div className="detail-spec__label">{t.detail_specs_label_baths}</div>
+                    <div className="detail-spec__value">{p.baths}</div>
+                  </div>
+                </div>
+                <div className="detail-spec">
+                  <div className="detail-spec__icon"><Icon name="sqm" size={20} /></div>
+                  <div>
+                    <div className="detail-spec__label">{t.detail_specs_label_size}</div>
+                    <div className="detail-spec__value">{p.sqm} m²</div>
+                  </div>
+                </div>
+                <div className="detail-spec">
+                  <div className="detail-spec__icon"><Icon name="car" size={20} /></div>
+                  <div>
+                    <div className="detail-spec__label">{t.detail_specs_label_parking}</div>
+                    <div className="detail-spec__value">2</div>
+                  </div>
+                </div>
+              </div>
+            </Reveal>
+
+            <Reveal delay={2}>
+              <div className="panel" style={{ marginBottom: 22 }}>
+                <div className="panel__head"><div className="panel__title">{t.detail_about}</div></div>
+                <p style={{ color: 'var(--ink-700)', fontSize: 14.5, lineHeight: 1.65, margin: 0 }}>{t.detail_about_text}</p>
+              </div>
+            </Reveal>
+
+            <Reveal delay={3}>
+              <div className="panel">
+                <div className="panel__head"><div className="panel__title">{t.detail_amenities}</div></div>
+                <div className="amenities">
+                  {amenities.map((a, i) => (
+                    <div key={i} className="amenity">
+                      <Icon name="check" size={14} />{a.label}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Reveal>
+          </div>
+
+          <div>
+            <Reveal>
+              <div className="private-card">
+                <div className="private-banner">
+                  <Icon name="lock" size={14} />
+                  {t.private_banner}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--ink-500)', marginBottom: 14 }}>{t.private_sub}</div>
+
+                <div className="owner-row">
+                  <div className="owner-row__avatar" style={{ backgroundImage: `url(${window.AVATARS[3]})` }} />
+                  <div>
+                    <div className="owner-row__name">Eduardo Henríquez</div>
+                    <div className="owner-row__role">{t.owner_label} · +1 809 ••• ••42</div>
+                  </div>
+                  <button className="owner-row__action"><Icon name="phone" size={14} /></button>
+                </div>
+                <div className="owner-row">
+                  <div className="owner-row__avatar" style={{ backgroundImage: `url(${window.AVATARS[0]})` }} />
+                  <div>
+                    <div className="owner-row__name">Carolina Méndez</div>
+                    <div className="owner-row__role">{t.owner_agent_label} · 12% comisión</div>
+                  </div>
+                  <button className="owner-row__action"><Icon name="phone" size={14} /></button>
+                </div>
+              </div>
+            </Reveal>
+
+            <Reveal delay={1}>
+              <div className="share-card">
+                <div className="share-card__title">{t.share_title}</div>
+                <div className="share-card__sub">{t.share_sub}</div>
+
+                <div className="share-toggle">
+                  <div style={{ flex: 1 }}>
+                    <div className="share-toggle__label">Mostrar fotos</div>
+                    <div className="share-toggle__sub">Galería completa</div>
+                  </div>
+                  <div className={'toggle-switch' + (shareSettings.photos ? ' is-on' : '')} onClick={() => toggle('photos')} />
+                </div>
+                <div className="share-toggle">
+                  <div style={{ flex: 1 }}>
+                    <div className="share-toggle__label">Ubicación exacta</div>
+                    <div className="share-toggle__sub">Mostrar en mapa</div>
+                  </div>
+                  <div className={'toggle-switch' + (shareSettings.location ? ' is-on' : '')} onClick={() => toggle('location')} />
+                </div>
+                <div className="share-toggle">
+                  <div style={{ flex: 1 }}>
+                    <div className="share-toggle__label">Datos del propietario</div>
+                    <div className="share-toggle__sub">Privado · Sin datos del dueño</div>
+                  </div>
+                  <div className={'toggle-switch' + (shareSettings.owner ? ' is-on' : '')} onClick={() => toggle('owner')} />
+                </div>
+                <div className="share-toggle">
+                  <div style={{ flex: 1 }}>
+                    <div className="share-toggle__label">Precio negociable</div>
+                    <div className="share-toggle__sub">Solo visualización</div>
+                  </div>
+                  <div className={'toggle-switch' + (shareSettings.price ? ' is-on' : '')} onClick={() => toggle('price')} />
+                </div>
+
+                <div className="share-actions">
+                  <button className="share-action share-action--primary"><Icon name="share" size={14} />{t.share_action_internal}</button>
+                  <button className="share-action"><Icon name="send" size={14} />{t.share_action_client}</button>
+                  <button className="share-action"><Icon name="brochure" size={14} />{t.share_action_brochure}</button>
+                  <button className="share-action"><Icon name="publish" size={14} />{t.share_action_publish}</button>
+                  <button className="share-action share-action--whatsapp"><Icon name="whatsapp" size={14} />{t.share_action_whatsapp}</button>
+                </div>
+              </div>
+            </Reveal>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+window.Detail = Detail;
+
+// ═══════════════════════════════════════════════════════════
+// app root
+// ═══════════════════════════════════════════════════════════
+const { useState, useEffect } = React;
+
+const TWEAK_DEFAULS = /*EDITMODE-BEGIN*/{
+  "lang": "es"
+}/*EDITMODE-END*/;
+
+const App = () => {
+  const [route, setRoute] = useState('landing');
+  const [property, setProperty] = useState(null);
+  const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULS);
+  const t = window.I18N[tweaks.lang] || window.I18N.es;
+
+  const openProperty = (p) => {
+    setProperty(p);
+    setRoute('detail');
+    window.scrollTo(0, 0);
+  };
+
+  useEffect(() => { window.scrollTo(0, 0); }, [route]);
+
+  const isLanding = route === 'landing';
+
+  return (
+    <>
+      <div className={'app' + (isLanding ? ' app--landing' : '')}>
+        {!isLanding && <window.Sidebar active={route} setRoute={setRoute} t={t} />}
+        <main className="main">
+          {route === 'landing' && <window.Landing t={t} setRoute={setRoute} />}
+          {route === 'dashboard' && <window.Dashboard t={t} setRoute={setRoute} openProperty={openProperty} />}
+          {route === 'leads' && <window.Crm t={t} />}
+          {route === 'properties' && <window.Properties t={t} openProperty={openProperty} />}
+          {route === 'detail' && <window.Detail t={t} property={property} setRoute={setRoute} />}
+          {(route === 'tasks' || route === 'network' || route === 'brochures' || route === 'settings') && (
+            <div className="page">
+              <window.Topbar title={t['nav_' + route] || route} subtitle="Próximamente" />
+              <div className="content">
+                <div className="panel" style={{ textAlign: 'center', padding: 80 }}>
+                  <div style={{ fontSize: 48, marginBottom: 12 }}>🚧</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700 }}>Sección en construcción</div>
+                  <div style={{ color: 'var(--ink-500)', marginTop: 8 }}>Esta vista forma parte del roadmap del MVP.</div>
+                </div>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+
+      <TweaksPanel title="Tweaks">
+        <TweakSection label="Idioma">
+          <TweakRadio
+            value={tweaks.lang}
+            onChange={(v) => setTweak('lang', v)}
+            options={[
+              { value: 'es', label: 'Español' },
+              { value: 'en', label: 'English' },
+            ]}
+          />
+        </TweakSection>
+      </TweaksPanel>
+    </>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('app')).render(<App />);
+</script>
+</body>
+</html>
