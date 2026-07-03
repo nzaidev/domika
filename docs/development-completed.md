@@ -1,0 +1,164 @@
+# Domika — Development Completed
+
+Status of implemented work against [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md), with UI test steps for each feature.
+
+Last updated: July 3, 2026 · Current state: **Phase 0 complete, Phase 1 complete** (pending the week-2 client review gate).
+
+---
+
+## Setup prerequisites (once)
+
+Everything below assumes a running local environment:
+
+1. **Env vars** — copy `.env.example` to `.env.local` and fill in:
+   - Clerk: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`
+   - Supabase: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+   - Webhooks (optional until testing them): `META_WEBHOOK_VERIFY_TOKEN`, `META_APP_SECRET`
+   - Internal panel (optional): `SUPER_ADMIN_EMAILS`
+2. **Migrations** — apply all four, in order, to the Supabase project (`supabase db push` or run each file in the SQL editor):
+   - `202606300001_initial_schema.sql` — full multi-tenant schema + RLS
+   - `202606300002_clerk_identity.sql` — Clerk-based identity functions/policies
+   - `202607030003_whatsapp_accounts.sql` — WhatsApp routing + message idempotency
+   - `202607030004_meta_lead_pages.sql` — Meta Lead Ads page routing
+3. **Seed (optional)** — `supabase/seed.sql` creates a demo org (SAILE), stages, one lead, one property, one published listing.
+4. **Run** — `npm run dev`, open `http://localhost:3000`.
+
+If Clerk/Supabase env vars are missing, every app route renders a "Configuración del backend" setup screen instead of crashing — that itself is testable.
+
+---
+
+## Phase 0 — Backend foundation ✅
+
+| Item | Where |
+|---|---|
+| Full schema (29+ tables), RLS on every table, org-scoped policies | `supabase/migrations/202606300001_initial_schema.sql` |
+| Identity: Clerk (not Supabase Auth — plan divergence, recorded here) | `202606300002_clerk_identity.sql`, `src/lib/auth/session.ts` |
+| Supabase clients (browser / server / service-role admin) | `src/lib/supabase/` |
+| Typed DB layer + domain modules | `src/lib/database.types.ts`, `src/lib/domain/` |
+| App Router pattern proven (route group `(app)`, auth middleware via `src/proxy.ts`) | `src/app/(app)/` |
+| Listing Distribution seam (publications, engagement, attribution, public listing API) | `/api/listings/[slug]`, `src/lib/domain/listing-distribution.ts` |
+
+**How to test:** sign up at `/sign-up`, complete onboarding (below), and confirm the dashboard shows live counts (leads/properties/published/tasks) from your Supabase project rather than mock numbers.
+
+---
+
+## Phase 1 — Foundation + CRM Core ✅
+
+### 1. Org onboarding
+
+New Clerk users have no org; they are routed to create one.
+
+**Test:**
+1. Sign up at `/sign-up` with a new email.
+2. Visit `/dashboard` → you are redirected to `/onboarding`.
+3. Enter an organization name + your name (phone optional) → "Crear organización".
+4. You land on `/dashboard` as **owner**. Settings → the pipeline shows the six seeded stages (Nuevo → Contactado → Visito → Negociacion → Cierre → Perdido).
+
+### 2. Team invitations (roles + seat limit)
+
+**Test:**
+1. As owner/admin, go to `/settings` → "Agregar un agente al equipo".
+2. Enter an email + role → "Invitar al equipo" → a 7-day invite link appears; "Copiar enlace de invitación".
+3. Open the link in an incognito window → Clerk forces sign-in/sign-up → the invite page shows org + role → "Aceptar invitación" → lands on the dashboard as a member.
+4. Negative checks: accepting with a different email than invited fails with a clear error; a second pending invite to the same email is blocked; invites beyond the org's `max_users` are blocked; agents (role) see no invite form; "Revocar" kills a pending invite.
+
+### 3. Leads board (real data) + manual capture
+
+**Test:**
+1. `/leads` shows one column per pipeline stage with live counts.
+2. "Nuevo prospecto" (right rail): name, phone, email, zone, notes → the lead appears in the first stage instantly.
+3. Phone normalization: enter `70000001` → open the lead → phone shows `+59170000001` (default +591 prefix; `+`-prefixed international numbers are kept as-is).
+
+### 4. Search & filters
+
+**Test:** on `/leads`, use the filter bar — text search (name/phone/email), source, agent, business unit. Filters live in the URL (shareable); "Limpiar" resets.
+
+### 5. Drag-and-drop pipeline (with audit trail)
+
+**Test:**
+1. On `/leads`, drag a card to another column → it moves instantly (optimistic) and persists on reload.
+2. Open the lead → the timeline shows "Movido a {etapa}"; the DB gains a `pipeline_events` row per move.
+3. Touch devices: use the stage selector on the lead detail page instead (HTML5 DnD is desktop-only by design).
+
+### 6. Lead detail page
+
+**Test:** click any card → `/leads/{id}`:
+- Facts rail: phone, email, zone, budget, assignee, created date.
+- Stage selector ("Mover de etapa") — same audited write as drag-and-drop.
+- "Agregar nota" → appears at the top of the timeline.
+- WhatsApp panel: chat bubbles if the lead has a linked thread (see §8), otherwise an explanatory empty state.
+- A lead ID from another org returns 404 (tenant isolation).
+
+### 7. CSV import (mapping + dedupe preview)
+
+**Test:**
+1. `/leads` → "Importar contactos" → upload a CSV whose first row is headers, e.g.:
+   ```csv
+   Nombre,Celular,Correo,Zona
+   Ana Suárez,70011122,ana@mail.com,Equipetrol
+   Luis Rocha,+59170033344,luis@mail.com,Urubó
+   Ana Suárez,70011122,ana@mail.com,Equipetrol
+   ```
+2. Column mapping is auto-guessed from headers (nombre/cel/correo/zona…); adjust with the dropdowns.
+3. "Verificar duplicados" → per-row verdict: Nuevo / Ya existe (teléfono) / Ya existe (email) / Repetido en el archivo / Sin nombre. Row 3 above shows "Repetido en el archivo".
+4. "Importar N prospectos" → only new rows import, into the first stage, phones normalized to +591. Re-importing the same file → everything is a duplicate, 0 created.
+5. Limit: 2,000 rows per file.
+
+### 8. WhatsApp lead capture (Meta Cloud API)
+
+Inbound messages auto-create leads and threads. Requires a row in `whatsapp_accounts` mapping your Meta `phone_number_id` → organization.
+
+**Test without Meta (simulated webhook):**
+1. Insert an account row in Supabase:
+   ```sql
+   insert into whatsapp_accounts (organization_id, phone_number_id, display_phone_number)
+   values ('<your-org-id>', '1234567890', '+59170000000');
+   ```
+2. Send a signed payload (uses `META_APP_SECRET` from `.env.local`):
+   ```bash
+   BODY='{"object":"whatsapp_business_account","entry":[{"changes":[{"value":{"metadata":{"phone_number_id":"1234567890"},"contacts":[{"profile":{"name":"Carlos Prueba"},"wa_id":"59171234567"}],"messages":[{"id":"wamid.test1","from":"59171234567","timestamp":"1751500000","type":"text","text":{"body":"Hola, vi la casa en Equipetrol"}}]}}]}]}'
+   SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$META_APP_SECRET" -hex | sed 's/^.*= /sha256=/')
+   curl -s -X POST http://localhost:3000/api/webhooks/whatsapp \
+     -H "content-type: application/json" -H "x-hub-signature-256: $SIG" -d "$BODY"
+   ```
+3. Expect `{"ok":true,"received":1,"stored":1,...,"leadsCreated":1}`. On `/leads`, "Carlos Prueba" is in the first stage with source WhatsApp; open it → the message shows as a chat bubble.
+4. Idempotency: re-run the same curl → `duplicates:1`, no second lead/message.
+5. Verification handshake: `GET /api/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=<META_WEBHOOK_VERIFY_TOKEN>&hub.challenge=123` returns `123`. A bad signature on POST returns 401.
+
+**Live:** point the Meta app's webhook at `https://<host>/api/webhooks/whatsapp` after Meta app review + WABA verification (external track).
+
+### 9. Meta Lead Ads capture
+
+Same shape as WhatsApp: requires a `meta_lead_pages` row (`page_id` → org). With a page `access_token` stored, the ingest pulls name/email/phone from the Graph API; without one it creates a placeholder lead carrying the `leadgen_id`.
+
+**Test (simulated):** same curl pattern against `/api/webhooks/meta-leads` with body `{"object":"page","entry":[{"changes":[{"field":"leadgen","value":{"leadgen_id":"L1","page_id":"<page_id>","form_id":"F1","ad_id":"A1","campaign_id":"C1"}}]}]}`. Expect a new lead with source Meta Ads and campaign IDs in `source_meta`. Re-sending the same `leadgen_id` → duplicate, no new lead. A submission matching an existing phone/email folds into that lead's timeline instead of duplicating.
+
+### 10. Pipeline customization
+
+**Test:** `/settings` → "Etapas del pipeline" (owner/admin only; agents see read-only):
+- Add a stage ("Agregar etapa") → new column appears on `/leads`.
+- Rename inline → board updates.
+- Reorder with ↑ / ↓.
+- Delete → its leads reparent to the first remaining stage (nothing disappears); deleting the last stage is blocked.
+
+### 11. Super-admin panel (internal)
+
+**Test:**
+1. Add your Clerk email to `SUPER_ADMIN_EMAILS` in `.env.local`, restart dev.
+2. Visit `/admin` → all orgs with member/lead/property counts; edit plan, max users, billing status → "Guardar".
+3. With an email not on the list, `/admin` returns 404 (panel existence hidden).
+
+---
+
+## Cross-cutting behaviors worth spot-checking
+
+- **Tenant isolation** — two orgs never see each other's leads/properties; enforced by RLS *and* org-scoped domain queries. Quick check: create two orgs (two Clerk users), confirm boards are independent and cross-org lead URLs 404.
+- **Phone normalization (+591 default)** — applied on every entry path (manual, CSV, WhatsApp, Meta Ads, onboarding), so the same person arriving via CSV (`70011122`) and WhatsApp (`59170011122`) dedupes to one lead.
+- **Session states** — every app route degrades cleanly: no env → setup screen; signed out → `/sign-in`; signed in without profile → `/onboarding`.
+- **Spanish-first UI** — all new screens ship in Spanish (i18n es/en parity for the prototype screens; new CRM strings are currently es-only — parity pass pending).
+
+---
+
+## Not yet implemented (next: Phase 2)
+
+Task management (+ background-job runner decision, §12 of the plan), property inventory on real data with photo upload/normalization, collaboration network UI on `property_shares`, brochure designer, then Phase 3 (contracts, email, matching, notifications) and Phase 4 (Waiboom, QA, launch). External tracks pending on the client side: Meta app review, WhatsApp Business verification, and applying migrations to the production Supabase project.
