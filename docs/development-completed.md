@@ -179,9 +179,31 @@ Full CRUD with private owner data and a photo pipeline that normalizes images on
 3. `/dashboard` → "Inventario reciente" shows the 3 newest properties with covers (previously mock data).
 4. Tenant isolation: a property URL from another org returns 404.
 
+### 13. Task management + automation + reminders ✅
+
+Background-job decision (plan §12): **Vercel Cron + route handlers** (`vercel.json` schedules `/api/cron/reminders` every 15 minutes, authenticated with `CRON_SECRET`).
+
+**Test — manual tasks:**
+1. `/tasks` → "Agendar acción": título, tipo (llamada/visita/documento/seguimiento/reunión), prioridad, fecha límite + hora, responsable, prospecto y propiedad opcionales, descripción.
+2. The task appears grouped by due date: Vencidas / Hoy / Esta semana / Más adelante / Sin fecha / Completadas.
+3. Tap the ○ circle → task marked done (moves to Completadas, strikethrough); tap ✓ to reopen.
+4. Linked tasks show 👤 prospecto and 🏠 propiedad links that navigate to their pages; creating a lead-linked task also writes a "Tarea creada" entry in the lead's timeline.
+5. Filter by responsable and tipo; counts in the header show open + overdue.
+
+**Test — auto-tasks (automation rules):**
+1. The seed org includes the rule "Seguimiento despues de nuevo lead" (trigger `stage_change`, condition `to_stage: "Nuevo"`). Move any lead into the **Nuevo** stage (drag or stage selector) → a follow-up task appears in `/tasks` marked "auto", assigned to the lead's agent, due tomorrow.
+2. Move the lead out and back into Nuevo → **no duplicate**: only one open auto-task per rule+lead.
+3. A new WhatsApp lead (trigger `new_message`) also fires matching rules.
+4. Rules live in `automation_rules` (jsonb `conditions`/`actions`) — no UI yet; manage via SQL for now.
+
+**Test — reminders cron:**
+1. Set `CRON_SECRET` in `.env.local`. Create a task due within the next hour.
+2. `curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/reminders` → `{"ok":true,"checked":N,"notified":N}`.
+3. A row appears in `notifications` for the assignee ("Tarea próxima/vencida: …"); re-running does not re-notify (`reminder_sent_at` marks the task). In production, Vercel Cron calls this automatically every 15 minutes once `CRON_SECRET` is set in the project env. (In-app notification feed UI lands in Phase 3; email/WhatsApp reminder channels attach then too.)
+
 ### Pending in Phase 2
 
-Task management (+ the §12 background-job runner decision), collaboration network UI on `property_shares` (sharing, permissions, view tracking, realtime), brochure designer (WhatsApp flyer + PDF).
+Collaboration network UI on `property_shares` (sharing, permissions, view tracking, realtime), brochure designer (WhatsApp flyer + PDF). Calendar view for tasks is a nice-to-have pending item.
 
 ---
 
