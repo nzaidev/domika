@@ -4,13 +4,11 @@ import {
   isValidMetaSignature,
 } from "@/lib/integrations/meta-webhook";
 import {
-  ingestWhatsappWebhook,
-  type MetaWebhookPayload,
-} from "@/lib/domain/whatsapp";
+  ingestMetaLeadsWebhook,
+  type MetaLeadsWebhookPayload,
+} from "@/lib/domain/meta-leads";
 
-// Meta Cloud API webhook (WhatsApp Business Platform).
-// GET  → subscription verification handshake.
-// POST → inbound messages/status updates, signed with X-Hub-Signature-256.
+// Meta Lead Ads webhook: leadgen form submissions auto-create CRM leads.
 
 export async function GET(request: Request) {
   return handleMetaVerification(request);
@@ -29,24 +27,24 @@ export async function POST(request: Request) {
     return Response.json({ error: "Firma inválida." }, { status: 401 });
   }
 
-  let payload: MetaWebhookPayload;
+  let payload: MetaLeadsWebhookPayload;
 
   try {
-    payload = JSON.parse(rawBody) as MetaWebhookPayload;
+    payload = JSON.parse(rawBody) as MetaLeadsWebhookPayload;
   } catch {
     return Response.json({ error: "JSON inválido." }, { status: 400 });
   }
 
-  if (payload.object !== "whatsapp_business_account") {
+  if (payload.object !== "page") {
     return Response.json({ ignored: true }, { status: 200 });
   }
 
   try {
-    const summary = await ingestWhatsappWebhook(payload);
+    const summary = await ingestMetaLeadsWebhook(payload);
     return Response.json({ ok: true, ...summary }, { status: 200 });
   } catch (error) {
     // Return 200 so Meta does not retry-storm; the failure is logged for us.
-    console.error("[webhooks/whatsapp] ingest failed:", error);
+    console.error("[webhooks/meta-leads] ingest failed:", error);
     return Response.json({ ok: false }, { status: 200 });
   }
 }

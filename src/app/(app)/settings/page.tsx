@@ -3,9 +3,11 @@ import { PageHeader } from "@/components/domika/AppWidgets";
 import styles from "@/components/domika/domika-app.module.css";
 import type { AppRole } from "@/lib/database.types";
 import { getTeamOverview } from "@/lib/domain/invitations";
+import { getPipelineStages } from "@/lib/domain/pipeline";
 import { revokeInvitationAction } from "./actions";
 import { CopyInviteLinkButton } from "./CopyInviteLinkButton";
 import { InviteForm } from "./InviteForm";
+import { PipelineEditor } from "./PipelineEditor";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +65,7 @@ export default async function SettingsPage() {
   }
 
   const canManageTeam = team.profile.role !== "agent";
+  const stages = await getPipelineStages();
 
   return (
     <div className={styles.page}>
@@ -155,6 +158,26 @@ export default async function SettingsPage() {
           )}
         </section>
       </div>
+
+      <section className={styles.panel}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <span className={styles.eyebrow}>Embudo de ventas</span>
+            <h2>Etapas del pipeline</h2>
+          </div>
+        </div>
+        {canManageTeam ? (
+          <PipelineEditor stages={stages} />
+        ) : (
+          <div className={styles.fieldList}>
+            {stages.map((stage) => (
+              <article className={styles.fieldRow} key={stage.id}>
+                <strong>{stage.name}</strong>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
 
       <section className={styles.threeGrid}>
         {integrations.map((setting) => (

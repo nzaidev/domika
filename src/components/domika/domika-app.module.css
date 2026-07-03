@@ -1101,3 +1101,15 @@ a.leadCard[draggable="true"] {
 a.leadCard[draggable="true"]:active {
   cursor: grabbing;
 }
+
+.stageEditRow {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.stageEditActions {
+  display: flex;
+  gap: 6px;
+}
