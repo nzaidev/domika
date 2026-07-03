@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
@@ -5,19 +6,21 @@ import {
   LifecycleBoard,
   MetricGrid,
   PageHeader,
-  PropertyGrid,
   TaskList,
   WhatsAppInbox,
 } from "@/components/domika/AppWidgets";
 import styles from "@/components/domika/domika-app.module.css";
 import {
-  appProperties,
   campaignChannels,
   lifecycleColumns,
   tasks,
   whatsappInbox,
 } from "@/lib/domika-app-data";
 import { getDashboardOverview } from "@/lib/domain/dashboard";
+import {
+  formatPrice,
+  STATUS_LABELS,
+} from "@/app/(app)/properties/labels";
 
 export const dynamic = "force-dynamic";
 
@@ -121,7 +124,55 @@ export default async function DashboardPage() {
               Ver todo
             </Link>
           </div>
-          <PropertyGrid properties={appProperties} limit={3} />
+          {overview.recentProperties.length > 0 ? (
+            <section className={styles.propertyGrid} aria-label="Propiedades">
+              {overview.recentProperties.map((property) => (
+                <Link
+                  className={styles.propertyCard}
+                  href={`/properties/${property.id}`}
+                  key={property.id}
+                >
+                  {property.coverUrl ? (
+                    <Image
+                      src={property.coverUrl}
+                      alt={property.title}
+                      className={styles.propertyImage}
+                      width={900}
+                      height={506}
+                      sizes="(max-width: 820px) 100vw, 30vw"
+                    />
+                  ) : (
+                    <div className={styles.propertyImagePlaceholder}>
+                      Sin fotos
+                    </div>
+                  )}
+                  <div className={styles.propertyBody}>
+                    <div className={styles.propertyTitleBlock}>
+                      <strong>{property.title}</strong>
+                      <span className={styles.propertyMeta}>
+                        {[property.zone, property.city]
+                          .filter(Boolean)
+                          .join(", ") || property.property_type}
+                      </span>
+                    </div>
+                    <div className={styles.propertyFooter}>
+                      <strong>
+                        {formatPrice(property.price, property.currency)}
+                      </strong>
+                      <span className={styles.pill}>
+                        {STATUS_LABELS[property.status]}
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </section>
+          ) : (
+            <p className={styles.mutedText}>
+              Todavía no hay propiedades.{" "}
+              <Link href="/properties/new">Crea la primera</Link>.
+            </p>
+          )}
         </section>
 
         <section className={styles.panel}>

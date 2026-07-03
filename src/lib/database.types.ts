@@ -233,6 +233,20 @@ export type PropertyRow = {
   updated_at: string;
 };
 
+export type PropertyMediaRow = {
+  id: string;
+  organization_id: string;
+  property_id: string;
+  storage_path: string;
+  public_url: string | null;
+  media_type: string;
+  alt_text: string | null;
+  position: number;
+  is_cover: boolean;
+  metadata: Json;
+  created_at: string;
+};
+
 export type ListingPublicationRow = {
   id: string;
   organization_id: string;
@@ -349,6 +363,7 @@ export type Database = {
       lead_activities: Table<LeadActivityRow>;
       pipeline_events: Table<PipelineEventRow>;
       properties: Table<PropertyRow>;
+      property_media: Table<PropertyMediaRow>;
       listing_publications: Table<ListingPublicationRow>;
       listing_engagement_events: Table<ListingEngagementEventRow>;
       listing_lead_attributions: Table<ListingLeadAttributionRow>;

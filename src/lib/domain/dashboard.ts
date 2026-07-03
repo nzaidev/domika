@@ -3,6 +3,7 @@ import "server-only";
 import type { ProfileRow } from "@/lib/database.types";
 import { getSessionProfile } from "@/lib/auth/session";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import type { PropertyWithCover } from "@/lib/domain/properties";
 
 export type DashboardOverview =
   | { status: "not_configured" }
@@ -17,6 +18,7 @@ export type DashboardOverview =
         publishedListings: number;
         openTasks: number;
       };
+      recentProperties: PropertyWithCover[];
     };
 
 export async function getDashboardOverview(): Promise<DashboardOverview> {
@@ -36,7 +38,8 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
 
   const organizationId = session.profile.organization_id;
   const supabase = createAdminSupabaseClient();
-  const [leads, properties, publishedListings, openTasks] = await Promise.all([
+  const [leads, properties, publishedListings, openTasks, recent] =
+    await Promise.all([
     supabase
       .from("leads")
       .select("id", { count: "exact", head: true })
@@ -55,11 +58,39 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
       .select("id", { count: "exact", head: true })
       .eq("organization_id", organizationId)
       .neq("status", "done"),
+    supabase
+      .from("properties")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .order("created_at", { ascending: false })
+      .limit(3),
   ]);
 
-  for (const result of [leads, properties, publishedListings, openTasks]) {
+  for (const result of [leads, properties, publishedListings, openTasks, recent]) {
     if (result.error) {
       throw result.error;
+    }
+  }
+
+  const recentRows = recent.data ?? [];
+  const covers = new Map<string, string | null>();
+
+  if (recentRows.length > 0) {
+    const { data: media } = await supabase
+      .from("property_media")
+      .select("property_id, public_url, is_cover, position")
+      .eq("organization_id", organizationId)
+      .in(
+        "property_id",
+        recentRows.map((row) => row.id),
+      )
+      .order("is_cover", { ascending: false })
+      .order("position", { ascending: true });
+
+    for (const item of media ?? []) {
+      if (!covers.has(item.property_id)) {
+        covers.set(item.property_id, item.public_url);
+      }
     }
   }
 
@@ -72,5 +103,9 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
       publishedListings: publishedListings.count ?? 0,
       openTasks: openTasks.count ?? 0,
     },
+    recentProperties: recentRows.map((row) => ({
+      ...row,
+      coverUrl: covers.get(row.id) ?? null,
+    })),
   };
 }

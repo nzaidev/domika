@@ -1,0 +1,417 @@
+import "server-only";
+
+import type {
+  PropertyMediaRow,
+  PropertyRow,
+} from "@/lib/database.types";
+import { normalizePhone } from "@/lib/phone";
+import { getSessionProfile } from "@/lib/auth/session";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+
+export const PROPERTY_TYPES = [
+  "Casa",
+  "Departamento",
+  "Terreno",
+  "Oficina",
+  "Local comercial",
+  "Otro",
+] as const;
+
+export type PropertyFilters = {
+  q?: string;
+  status?: PropertyRow["status"];
+  operation?: PropertyRow["operation"];
+  propertyType?: string;
+};
+
+export type PropertyWithCover = PropertyRow & {
+  coverUrl: string | null;
+};
+
+export type PropertiesList =
+  | { status: "not_configured" }
+  | { status: "unauthenticated" }
+  | { status: "profile_missing" }
+  | { status: "ready"; properties: PropertyWithCover[]; total: number };
+
+export async function listProperties(
+  filters: PropertyFilters = {},
+): Promise<PropertiesList> {
+  const session = await getSessionProfile();
+
+  if (session.status !== "authenticated") {
+    return { status: session.status };
+  }
+
+  const organizationId = session.profile.organization_id;
+  const supabase = createAdminSupabaseClient();
+
+  let query = supabase
+    .from("properties")
+    .select("*")
+    .eq("organization_id", organizationId);
+
+  if (filters.q) {
+    const term = filters.q.replace(/[%,()]/g, " ").trim();
+    if (term) {
+      query = query.or(
+        `title.ilike.%${term}%,city.ilike.%${term}%,zone.ilike.%${term}%,address.ilike.%${term}%`,
+      );
+    }
+  }
+
+  if (filters.status) {
+    query = query.eq("status", filters.status);
+  }
+
+  if (filters.operation) {
+    query = query.eq("operation", filters.operation);
+  }
+
+  if (filters.propertyType) {
+    query = query.eq("property_type", filters.propertyType);
+  }
+
+  const { data: properties, error } = await query
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  if (error) {
+    throw error;
+  }
+
+  const rows = properties ?? [];
+  const covers = new Map<string, string | null>();
+
+  if (rows.length > 0) {
+    const { data: media } = await supabase
+      .from("property_media")
+      .select("property_id, public_url, is_cover, position")
+      .eq("organization_id", organizationId)
+      .in(
+        "property_id",
+        rows.map((row) => row.id),
+      )
+      .order("is_cover", { ascending: false })
+      .order("position", { ascending: true });
+
+    for (const item of media ?? []) {
+      if (!covers.has(item.property_id)) {
+        covers.set(item.property_id, item.public_url);
+      }
+    }
+  }
+
+  return {
+    status: "ready",
+    properties: rows.map((row) => ({
+      ...row,
+      coverUrl: covers.get(row.id) ?? null,
+    })),
+    total: rows.length,
+  };
+}
+
+export type PropertyDetail =
+  | { status: "not_configured" }
+  | { status: "unauthenticated" }
+  | { status: "profile_missing" }
+  | { status: "not_found" }
+  | { status: "ready"; property: PropertyRow; media: PropertyMediaRow[] };
+
+export async function getPropertyDetail(
+  propertyId: string,
+): Promise<PropertyDetail> {
+  const session = await getSessionProfile();
+
+  if (session.status !== "authenticated") {
+    return { status: session.status };
+  }
+
+  const organizationId = session.profile.organization_id;
+  const supabase = createAdminSupabaseClient();
+
+  const { data: property } = await supabase
+    .from("properties")
+    .select("*")
+    .eq("id", propertyId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+
+  if (!property) {
+    return { status: "not_found" };
+  }
+
+  const { data: media, error } = await supabase
+    .from("property_media")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("property_id", propertyId)
+    .order("position", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return { status: "ready", property, media: media ?? [] };
+}
+
+export type PropertyInput = {
+  title: string;
+  description?: string | null;
+  propertyType: string;
+  operation: PropertyRow["operation"];
+  status: PropertyRow["status"];
+  price?: number | null;
+  currency?: string;
+  city?: string | null;
+  zone?: string | null;
+  address?: string | null;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  parkingSpaces?: number | null;
+  areaSqm?: number | null;
+  lotSqm?: number | null;
+  amenities?: string[];
+  legalStatus?: string | null;
+  videoUrl?: string | null;
+  virtualTourUrl?: string | null;
+  ownerName?: string | null;
+  ownerPhone?: string | null;
+  ownerEmail?: string | null;
+  ownerNotes?: string | null;
+};
+
+export type PropertyMutationResult =
+  | { ok: true; propertyId: string }
+  | { ok: false; error: string };
+
+function propertyRowFromInput(input: PropertyInput) {
+  return {
+    title: input.title.trim(),
+    description: input.description?.trim() || null,
+    property_type: input.propertyType.trim() || "Otro",
+    operation: input.operation,
+    status: input.status,
+    price: input.price ?? null,
+    currency: input.currency?.trim() || "USD",
+    city: input.city?.trim() || null,
+    zone: input.zone?.trim() || null,
+    address: input.address?.trim() || null,
+    bedrooms: input.bedrooms ?? null,
+    bathrooms: input.bathrooms ?? null,
+    parking_spaces: input.parkingSpaces ?? null,
+    area_sqm: input.areaSqm ?? null,
+    lot_sqm: input.lotSqm ?? null,
+    amenities: input.amenities ?? [],
+    legal_status: input.legalStatus?.trim() || null,
+    video_url: input.videoUrl?.trim() || null,
+    virtual_tour_url: input.virtualTourUrl?.trim() || null,
+    owner_name: input.ownerName?.trim() || null,
+    owner_phone: normalizePhone(input.ownerPhone),
+    owner_email: input.ownerEmail?.trim().toLowerCase() || null,
+    owner_notes: input.ownerNotes?.trim() || null,
+  };
+}
+
+export async function createProperty(
+  input: PropertyInput,
+): Promise<PropertyMutationResult> {
+  const session = await getSessionProfile();
+
+  if (session.status !== "authenticated") {
+    return { ok: false, error: "No hay una sesión activa con perfil." };
+  }
+
+  if (input.title.trim().length < 3) {
+    return { ok: false, error: "El título es muy corto." };
+  }
+
+  const supabase = createAdminSupabaseClient();
+  const { data, error } = await supabase
+    .from("properties")
+    .insert({
+      organization_id: session.profile.organization_id,
+      created_by: session.profile.id,
+      assigned_to: session.profile.id,
+      ...propertyRowFromInput(input),
+    })
+    .select("id")
+    .single();
+
+  if (error || !data) {
+    return { ok: false, error: error?.message ?? "No se pudo crear la propiedad." };
+  }
+
+  return { ok: true, propertyId: data.id };
+}
+
+export async function updateProperty(
+  propertyId: string,
+  input: PropertyInput,
+): Promise<PropertyMutationResult> {
+  const session = await getSessionProfile();
+
+  if (session.status !== "authenticated") {
+    return { ok: false, error: "No hay una sesión activa con perfil." };
+  }
+
+  if (input.title.trim().length < 3) {
+    return { ok: false, error: "El título es muy corto." };
+  }
+
+  const supabase = createAdminSupabaseClient();
+  const { data, error } = await supabase
+    .from("properties")
+    .update(propertyRowFromInput(input))
+    .eq("id", propertyId)
+    .eq("organization_id", session.profile.organization_id)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  if (!data) {
+    return { ok: false, error: "La propiedad no existe." };
+  }
+
+  return { ok: true, propertyId };
+}
+
+export type MediaMutationResult = { ok: true } | { ok: false; error: string };
+
+export async function setCoverMedia(input: {
+  propertyId: string;
+  mediaId: string;
+}): Promise<MediaMutationResult> {
+  const session = await getSessionProfile();
+
+  if (session.status !== "authenticated") {
+    return { ok: false, error: "No hay una sesión activa con perfil." };
+  }
+
+  const organizationId = session.profile.organization_id;
+  const supabase = createAdminSupabaseClient();
+
+  const { error: clearError } = await supabase
+    .from("property_media")
+    .update({ is_cover: false })
+    .eq("organization_id", organizationId)
+    .eq("property_id", input.propertyId);
+
+  if (clearError) {
+    return { ok: false, error: clearError.message };
+  }
+
+  const { error } = await supabase
+    .from("property_media")
+    .update({ is_cover: true })
+    .eq("id", input.mediaId)
+    .eq("organization_id", organizationId)
+    .eq("property_id", input.propertyId);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  return { ok: true };
+}
+
+export async function moveMedia(input: {
+  propertyId: string;
+  mediaId: string;
+  direction: "up" | "down";
+}): Promise<MediaMutationResult> {
+  const session = await getSessionProfile();
+
+  if (session.status !== "authenticated") {
+    return { ok: false, error: "No hay una sesión activa con perfil." };
+  }
+
+  const organizationId = session.profile.organization_id;
+  const supabase = createAdminSupabaseClient();
+
+  const { data: media } = await supabase
+    .from("property_media")
+    .select("id, position")
+    .eq("organization_id", organizationId)
+    .eq("property_id", input.propertyId)
+    .order("position", { ascending: true });
+
+  const items = media ?? [];
+  const index = items.findIndex((item) => item.id === input.mediaId);
+
+  if (index === -1) {
+    return { ok: false, error: "La foto no existe." };
+  }
+
+  const neighborIndex = input.direction === "up" ? index - 1 : index + 1;
+
+  if (neighborIndex < 0 || neighborIndex >= items.length) {
+    return { ok: true }; // Already at the edge.
+  }
+
+  const current = items[index];
+  const neighbor = items[neighborIndex];
+
+  const updates = [
+    { id: current.id, position: neighbor.position },
+    { id: neighbor.id, position: current.position },
+  ];
+
+  for (const update of updates) {
+    const { error } = await supabase
+      .from("property_media")
+      .update({ position: update.position })
+      .eq("id", update.id)
+      .eq("organization_id", organizationId);
+
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+  }
+
+  return { ok: true };
+}
+
+export async function deleteMedia(input: {
+  propertyId: string;
+  mediaId: string;
+}): Promise<MediaMutationResult> {
+  const session = await getSessionProfile();
+
+  if (session.status !== "authenticated") {
+    return { ok: false, error: "No hay una sesión activa con perfil." };
+  }
+
+  const organizationId = session.profile.organization_id;
+  const supabase = createAdminSupabaseClient();
+
+  const { data: media } = await supabase
+    .from("property_media")
+    .select("id, storage_path")
+    .eq("id", input.mediaId)
+    .eq("organization_id", organizationId)
+    .eq("property_id", input.propertyId)
+    .maybeSingle();
+
+  if (!media) {
+    return { ok: false, error: "La foto no existe." };
+  }
+
+  const { error } = await supabase
+    .from("property_media")
+    .delete()
+    .eq("id", media.id)
+    .eq("organization_id", organizationId);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  await supabase.storage.from("property-media").remove([media.storage_path]);
+
+  return { ok: true };
+}

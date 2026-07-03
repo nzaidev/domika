@@ -1154,3 +1154,81 @@ a.leadCard[draggable="true"]:active {
   gap: 12px;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
 }
+
+.propertyImagePlaceholder {
+  align-items: center;
+  aspect-ratio: 16 / 9;
+  background: var(--app-panel-strong);
+  color: var(--app-muted);
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+a.propertyCard {
+  color: inherit;
+  text-decoration: none;
+}
+
+a.propertyCard:hover {
+  border-color: var(--app-green-deep);
+}
+
+.galleryGrid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.galleryImage {
+  border: 1px solid var(--app-soft);
+  border-radius: 8px;
+  height: auto;
+  object-fit: cover;
+  width: 100%;
+}
+
+.photoList {
+  display: grid;
+  gap: 8px;
+}
+
+.photoRow {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--app-soft);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 88px minmax(0, 1fr) auto;
+  padding: 8px;
+}
+
+.photoThumb {
+  aspect-ratio: 16 / 10;
+  background: var(--app-panel-strong);
+  border-radius: 6px;
+  object-fit: cover;
+  width: 88px;
+}
+
+.photoMeta {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.photoMeta span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ownerSection {
+  background: var(--app-amber-soft);
+  border: 1px solid var(--app-amber);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
