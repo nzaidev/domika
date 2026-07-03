@@ -1,22 +1,31 @@
 import "server-only";
 
 import { randomBytes } from "node:crypto";
-import type { PropertyRow, SharePermission } from "@/lib/database.types";
+import type {
+  NetworkSafePropertyRow,
+  PropertyRow,
+  SharePermission,
+} from "@/lib/database.types";
 import { getSessionProfile } from "@/lib/auth/session";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 // Agent collaboration network: direct shares (agent/org, permission levels,
 // expiry, view tracking via audit_log) and the Domika network channel
-// (listing_publications channel = domika_network). Owner PII never leaves
-// the owning organization unless a share grants "full".
+// (listing_publications channel = domika_network).
+//
+// PII posture: every cross-org read goes through the properties_network_safe
+// VIEW, which physically excludes owner_* and address at the database level
+// (migration 0006) — application code cannot leak what it never receives.
+// Only a "full"-permission share fetches owner fields, via an explicit
+// separate query.
 
-// Same shape as PropertyRow; owner_* fields are nulled unless a share
-// grants "full" permission.
+// PropertyRow shape with owner_*/address nulled; cross-org pages consume this.
 export type SafeProperty = PropertyRow;
 
-function stripOwner(property: PropertyRow): SafeProperty {
+function toSafeProperty(row: NetworkSafePropertyRow): SafeProperty {
   return {
-    ...property,
+    ...row,
+    address: null,
     owner_name: null,
     owner_phone: null,
     owner_email: null,
@@ -151,8 +160,11 @@ export async function getNetworkOverview(): Promise<NetworkOverview> {
 
   const [pubProperties, pubCovers, viewEvents] = await Promise.all([
     pubPropertyIds.length > 0
-      ? supabase.from("properties").select("*").in("id", pubPropertyIds)
-      : Promise.resolve({ data: [] as PropertyRow[], error: null }),
+      ? supabase
+          .from("properties_network_safe")
+          .select("*")
+          .in("id", pubPropertyIds)
+      : Promise.resolve({ data: [] as NetworkSafePropertyRow[], error: null }),
     coversFor(supabase, pubPropertyIds),
     pubs.length > 0
       ? supabase
@@ -209,8 +221,11 @@ export async function getNetworkOverview(): Promise<NetworkOverview> {
 
   const [incomingProperties, incomingCovers] = await Promise.all([
     incomingPropertyIds.length > 0
-      ? supabase.from("properties").select("*").in("id", incomingPropertyIds)
-      : Promise.resolve({ data: [] as PropertyRow[], error: null }),
+      ? supabase
+          .from("properties_network_safe")
+          .select("*")
+          .in("id", incomingPropertyIds)
+      : Promise.resolve({ data: [] as NetworkSafePropertyRow[], error: null }),
     coversFor(supabase, incomingPropertyIds),
   ]);
 
@@ -659,10 +674,10 @@ export async function getSharedPropertyView(
     return { status: "expired" };
   }
 
-  const [{ data: property }, { data: owner }, { data: media }] =
+  const [{ data: safeRow }, { data: owner }, { data: media }] =
     await Promise.all([
       supabase
-        .from("properties")
+        .from("properties_network_safe")
         .select("*")
         .eq("id", share.property_id)
         .maybeSingle(),
@@ -678,8 +693,24 @@ export async function getSharedPropertyView(
         .order("position", { ascending: true }),
     ]);
 
-  if (!property) {
+  if (!safeRow) {
     return { status: "not_found" };
+  }
+
+  let property = toSafeProperty(safeRow);
+
+  // Only a "full" share reads owner PII (and the private address), via an
+  // explicit second query against the base table.
+  if (share.permission === "full") {
+    const { data: ownerFields } = await supabase
+      .from("properties")
+      .select("address, owner_name, owner_phone, owner_email, owner_notes")
+      .eq("id", share.property_id)
+      .maybeSingle();
+
+    if (ownerFields) {
+      property = { ...property, ...ownerFields };
+    }
   }
 
   // Record the view (who/when) unless the owner org is previewing.
@@ -697,11 +728,9 @@ export async function getSharedPropertyView(
     });
   }
 
-  const exposeOwner = share.permission === "full";
-
   return {
     status: "ready",
-    property: exposeOwner ? (property as SafeProperty) : stripOwner(property),
+    property,
     permission: share.permission,
     sharedByOrganization: owner?.name ?? "Organización",
     media: (media ?? [])
@@ -747,10 +776,10 @@ export async function getNetworkListingView(
     return { status: "not_found" };
   }
 
-  const [{ data: property }, { data: owner }, { data: media }] =
+  const [{ data: safeRow }, { data: owner }, { data: media }] =
     await Promise.all([
       supabase
-        .from("properties")
+        .from("properties_network_safe")
         .select("*")
         .eq("id", publication.property_id)
         .maybeSingle(),
@@ -766,9 +795,11 @@ export async function getNetworkListingView(
         .order("position", { ascending: true }),
     ]);
 
-  if (!property) {
+  if (!safeRow) {
     return { status: "not_found" };
   }
+
+  const property = toSafeProperty(safeRow);
 
   // Track the view unless it's the owning org looking at itself.
   if (publication.organization_id !== session.profile.organization_id) {
@@ -790,7 +821,7 @@ export async function getNetworkListingView(
 
   return {
     status: "ready",
-    property: stripOwner(property),
+    property,
     organizationName: owner?.name ?? "Organización",
     media: (media ?? [])
       .filter((item) => item.public_url)

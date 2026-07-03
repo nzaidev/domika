@@ -34,6 +34,21 @@ export const DEFAULT_LAYOUT: BrochureLayout = {
   sections: ["cover", "price", "specs", "description", "amenities", "agent"],
 };
 
+export function sanitizeLayout(input: unknown): BrochureLayout {
+  const raw = (input ?? {}) as Partial<BrochureLayout>;
+  const format: BrochureFormat = raw.format === "flyer" ? "flyer" : "pdf";
+  const sections = Array.isArray(raw.sections)
+    ? (raw.sections.filter((section) =>
+        BROCHURE_SECTIONS.includes(section as BrochureSection),
+      ) as BrochureSection[])
+    : DEFAULT_LAYOUT.sections;
+
+  return {
+    format,
+    sections: sections.length > 0 ? sections : DEFAULT_LAYOUT.sections,
+  };
+}
+
 export type BrochureData = {
   title: string;
   priceLabel: string;

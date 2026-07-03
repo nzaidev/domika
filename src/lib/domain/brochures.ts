@@ -8,34 +8,19 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { renderBrochurePdf } from "@/lib/brochures/pdf";
 import { renderFlyerImage } from "@/lib/brochures/flyer";
 import {
-  BROCHURE_SECTIONS,
-  DEFAULT_LAYOUT,
+  sanitizeLayout,
   type BrochureData,
   type BrochureFormat,
   type BrochureLayout,
-  type BrochureSection,
 } from "@/lib/brochures/types";
+
+export { sanitizeLayout };
 
 const OPERATION_LABELS: Record<string, string> = {
   sale: "En venta",
   rent: "En alquiler",
   investment: "Inversión",
 };
-
-export function sanitizeLayout(input: unknown): BrochureLayout {
-  const raw = (input ?? {}) as Partial<BrochureLayout>;
-  const format: BrochureFormat = raw.format === "flyer" ? "flyer" : "pdf";
-  const sections = Array.isArray(raw.sections)
-    ? (raw.sections.filter((section) =>
-        BROCHURE_SECTIONS.includes(section as BrochureSection),
-      ) as BrochureSection[])
-    : DEFAULT_LAYOUT.sections;
-
-  return {
-    format,
-    sections: sections.length > 0 ? sections : DEFAULT_LAYOUT.sections,
-  };
-}
 
 async function buildBrochureData(
   supabase: ReturnType<typeof createAdminSupabaseClient>,

@@ -4,7 +4,7 @@ Status of implemented work against [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md),
 
 Last updated: July 3, 2026 · Current state: **Phase 0 complete, Phase 1 complete, Phase 2 complete** (inventory, tasks + automation, collaboration network, brochures). Next: Phase 3 — contracts, email, demand matching, notifications feed.
 
-> **Deployment status:** all work is committed and pushed to `github.com/nzaidev/domika` (main). It has **not** been verified in production — a Vercel project (`domika`) is linked, but whether pushes auto-deploy depends on the Vercel Git integration, and migrations `…0003`–`…0005` still need `supabase db push` against the production project. Treat everything below as verified locally (typecheck, lint, build) plus the UI test steps documented per feature.
+> **Deployment status:** all work is committed and pushed to `github.com/nzaidev/domika` (main). It has **not** been verified in production — a Vercel project (`domika`) is linked, but whether pushes auto-deploy depends on the Vercel Git integration, and migrations `…0003`–`…0006` still need `supabase db push` against the production project. Treat everything below as verified locally (typecheck, lint, build) plus the UI test steps documented per feature.
 
 ---
 
@@ -17,12 +17,13 @@ Everything below assumes a running local environment:
    - Supabase: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
    - Webhooks (optional until testing them): `META_WEBHOOK_VERIFY_TOKEN`, `META_APP_SECRET`
    - Internal panel (optional): `SUPER_ADMIN_EMAILS`
-2. **Migrations** — apply all five, in order, to the Supabase project (`supabase db push` or run each file in the SQL editor):
+2. **Migrations** — apply all six, in order, to the Supabase project (`supabase db push` or run each file in the SQL editor):
    - `202606300001_initial_schema.sql` — full multi-tenant schema + RLS
    - `202606300002_clerk_identity.sql` — Clerk-based identity functions/policies
    - `202607030003_whatsapp_accounts.sql` — WhatsApp routing + message idempotency
    - `202607030004_meta_lead_pages.sql` — Meta Lead Ads page routing
    - `202607030005_property_media_bucket.sql` — public storage bucket for property photos
+   - `202607030006_network_safe_view_and_documents_bucket.sql` — cross-org safe view + private documents bucket
 3. **Seed (optional)** — `supabase/seed.sql` creates a demo org (SAILE), stages, one lead, one property, one published listing.
 4. **Run** — `npm run dev`, open `http://localhost:3000`.
 
@@ -153,7 +154,7 @@ Same shape as WhatsApp: requires a `meta_lead_pages` row (`page_id` → org). Wi
 
 ---
 
-## Phase 2 — Inventory + Productivity + Collaboration 🔶 (in progress)
+## Phase 2 — Inventory + Productivity + Collaboration ✅ (locally complete — production gate pending)
 
 ### 12. Property inventory (real data) ✅
 
@@ -254,6 +255,27 @@ Nice-to-haves pending (non-blocking): realtime updates on shared properties (Sup
 
 ---
 
+## Phase 2 deferrals (plan-scope items not shipped in Phase 2)
+
+These are in the plan's Phase 2 scope and were consciously deferred — tracked here, not silently dropped:
+
+| Item | Plan ref | Lands in |
+|---|---|---|
+| Tasks calendar view (daily/weekly) | §7 Task management | Phase 3 |
+| Email/WhatsApp reminder channels (in-app only today) | §7 Reminders | Phase 3 (needs email + WA outbound) |
+| Realtime updates on shared properties | §7 Collaboration | Phase 3 (Supabase Realtime subscription) |
+| Map view / geocoding | §7 Inventory (open question §12.4) | Blocked on provider decision |
+| PDF/document attachments on properties | §7 Inventory | Phase 3 (uses the new private `documents` bucket) |
+| Automation-rules management UI (rules run; managed via SQL) | §7 Auto-task rules | Phase 3 |
+| Freeform drag-drop brochure canvas (section-based editor shipped) | §7 Brochure designer | Backlog — revisit after client feedback |
+
+## Testing & security posture
+
+- **Unit tests + CI**: vitest suite (`npm test` — phone normalization, CSV parser, brochure layout sanitizer, PDF/flyer renderers) and a GitHub Actions workflow (lint, typecheck, test, build) run on every push/PR.
+- **Cross-org PII**: reads for the network feed, listing detail, and non-"full" shares go through the `properties_network_safe` VIEW (migration 0006), which excludes `owner_*` and `address` at the database level. Only a "full"-permission share fetches owner fields, via an explicit separate query.
+- **Known gap (tracked)**: app data access uses the service-role client, so table RLS policies are authored but not exercised by app traffic; the RLS integration test suite promised by the plan (§10) still needs a local Supabase stack and is **pending** — Phase 2 is not security-audit-complete until it exists.
+- **Storage**: `property-media` bucket is public by design (listing photos, brochures = marketing collateral). The private `documents` bucket (signed URLs, migration 0006) is reserved for contracts and property documents in Phase 3.
+
 ## Not yet implemented
 
-Remaining Phase 2: task management (+ background-job runner decision, §12 of the plan), collaboration network UI on `property_shares`, brochure designer. Then Phase 3 (contracts, email, matching, notifications) and Phase 4 (Waiboom, QA, launch). External tracks pending on the client side: Meta app review, WhatsApp Business verification, applying migrations `…0003`–`…0005` to the production Supabase project, and confirming the Vercel production deploy.
+Phase 3 (contracts, email, matching, notifications feed) and Phase 4 (Waiboom, QA, launch). External tracks pending on the client side: Meta app review, WhatsApp Business verification, applying migrations `…0003`–`…0006` to the production Supabase project, setting Vercel env (`CRON_SECRET`, `SUPER_ADMIN_EMAILS`, Meta secrets, production Clerk keys), and confirming the Vercel production deploy. **Overall status: Phases 0–2 locally complete; production gate pending.**

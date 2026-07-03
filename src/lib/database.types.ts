@@ -424,6 +424,13 @@ export type AuditLogRow = {
   created_at: string;
 };
 
+// Row shape of the properties_network_safe view: PropertyRow minus owner PII
+// and address. Cross-org reads must use this view (see migration 0006).
+export type NetworkSafePropertyRow = Omit<
+  PropertyRow,
+  "owner_name" | "owner_phone" | "owner_email" | "owner_notes" | "address"
+>;
+
 export type Database = {
   public: {
     Tables: {
@@ -451,7 +458,12 @@ export type Database = {
       brochure_templates: Table<BrochureTemplateRow>;
       brochures: Table<BrochureRow>;
     };
-    Views: Record<string, never>;
+    Views: {
+      properties_network_safe: {
+        Row: NetworkSafePropertyRow;
+        Relationships: never[];
+      };
+    };
     Functions: {
       get_public_listing: {
         Args: { p_slug: string };
