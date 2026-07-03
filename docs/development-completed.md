@@ -2,7 +2,9 @@
 
 Status of implemented work against [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md), with UI test steps for each feature.
 
-Last updated: July 3, 2026 · Current state: **Phase 0 complete, Phase 1 complete** (pending the week-2 client review gate).
+Last updated: July 3, 2026 · Current state: **Phase 0 complete, Phase 1 complete, Phase 2 in progress** (property inventory done; tasks, collaboration, brochures pending).
+
+> **Deployment status:** all work is committed and pushed to `github.com/nzaidev/domika` (main). It has **not** been verified in production — a Vercel project (`domika`) is linked, but whether pushes auto-deploy depends on the Vercel Git integration, and migrations `…0003`–`…0005` still need `supabase db push` against the production project. Treat everything below as verified locally (typecheck, lint, build) plus the UI test steps documented per feature.
 
 ---
 
@@ -15,11 +17,12 @@ Everything below assumes a running local environment:
    - Supabase: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
    - Webhooks (optional until testing them): `META_WEBHOOK_VERIFY_TOKEN`, `META_APP_SECRET`
    - Internal panel (optional): `SUPER_ADMIN_EMAILS`
-2. **Migrations** — apply all four, in order, to the Supabase project (`supabase db push` or run each file in the SQL editor):
+2. **Migrations** — apply all five, in order, to the Supabase project (`supabase db push` or run each file in the SQL editor):
    - `202606300001_initial_schema.sql` — full multi-tenant schema + RLS
    - `202606300002_clerk_identity.sql` — Clerk-based identity functions/policies
    - `202607030003_whatsapp_accounts.sql` — WhatsApp routing + message idempotency
    - `202607030004_meta_lead_pages.sql` — Meta Lead Ads page routing
+   - `202607030005_property_media_bucket.sql` — public storage bucket for property photos
 3. **Seed (optional)** — `supabase/seed.sql` creates a demo org (SAILE), stages, one lead, one property, one published listing.
 4. **Run** — `npm run dev`, open `http://localhost:3000`.
 
@@ -150,6 +153,36 @@ Same shape as WhatsApp: requires a `meta_lead_pages` row (`page_id` → org). Wi
 
 ---
 
+## Phase 2 — Inventory + Productivity + Collaboration 🔶 (in progress)
+
+### 12. Property inventory (real data) ✅
+
+Full CRUD with private owner data and a photo pipeline that normalizes images on ingest (EXIF rotation, max 1600px, WebP) via sharp, stored in the `property-media` bucket under `{org}/{property}/` paths.
+
+**Test — create and manage a property:**
+1. `/properties` → "Nueva propiedad" → fill the form (title required; type, operation, estado, precio USD/BOB, ciudad/zona/dirección, dormitorios/baños/parqueos, superficies, amenidades separadas por coma, situación legal, video/tour URLs).
+2. Owner section (amber panel): nombre, teléfono, email, notas — the owner phone gets +591 normalization like leads.
+3. "Crear propiedad" → you land on `/properties/{id}` with specs rail, description, amenity chips, and the owner panel marked "solo visible para tu organización".
+
+**Test — photos:**
+1. On the detail page → "Editar ficha" → the right panel is the photo manager.
+2. Upload one or several images (JPG/PNG/WebP/HEIC, up to 15 MB each) → thumbnails appear; the first photo becomes the cover automatically.
+3. Verify normalization: open an uploaded photo's URL — it's a `.webp` capped at 1600px regardless of the original size/format.
+4. "Hacer portada" on another photo → the list card on `/properties` switches its cover. Reorder with ↑/↓; "Eliminar" removes the row *and* the storage object.
+5. Invalid file (e.g. a PDF renamed .jpg or a 20 MB image) → a per-file error message, other files still upload.
+
+**Test — list, filters, dashboard:**
+1. `/properties` → search by title/city/zone/address; filter by estado, operación, tipo; combined filters live in the URL; "Limpiar" resets.
+2. Cards show cover, price ("Precio a consultar" when unset), status pill; clicking opens the detail.
+3. `/dashboard` → "Inventario reciente" shows the 3 newest properties with covers (previously mock data).
+4. Tenant isolation: a property URL from another org returns 404.
+
+### Pending in Phase 2
+
+Task management (+ the §12 background-job runner decision), collaboration network UI on `property_shares` (sharing, permissions, view tracking, realtime), brochure designer (WhatsApp flyer + PDF).
+
+---
+
 ## Cross-cutting behaviors worth spot-checking
 
 - **Tenant isolation** — two orgs never see each other's leads/properties; enforced by RLS *and* org-scoped domain queries. Quick check: create two orgs (two Clerk users), confirm boards are independent and cross-org lead URLs 404.
@@ -159,6 +192,6 @@ Same shape as WhatsApp: requires a `meta_lead_pages` row (`page_id` → org). Wi
 
 ---
 
-## Not yet implemented (next: Phase 2)
+## Not yet implemented
 
-Task management (+ background-job runner decision, §12 of the plan), property inventory on real data with photo upload/normalization, collaboration network UI on `property_shares`, brochure designer, then Phase 3 (contracts, email, matching, notifications) and Phase 4 (Waiboom, QA, launch). External tracks pending on the client side: Meta app review, WhatsApp Business verification, and applying migrations to the production Supabase project.
+Remaining Phase 2: task management (+ background-job runner decision, §12 of the plan), collaboration network UI on `property_shares`, brochure designer. Then Phase 3 (contracts, email, matching, notifications) and Phase 4 (Waiboom, QA, launch). External tracks pending on the client side: Meta app review, WhatsApp Business verification, applying migrations `…0003`–`…0005` to the production Supabase project, and confirming the Vercel production deploy.
