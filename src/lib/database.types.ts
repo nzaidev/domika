@@ -389,6 +389,17 @@ export type PublicListingRow = {
   published_at: string | null;
 };
 
+export type AuditLogRow = {
+  id: string;
+  organization_id: string | null;
+  actor_profile_id: string | null;
+  action: string;
+  target_table: string | null;
+  target_id: string | null;
+  metadata: Json;
+  created_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -412,6 +423,7 @@ export type Database = {
       tasks: Table<TaskRow>;
       notifications: Table<NotificationRow>;
       automation_rules: Table<AutomationRuleRow>;
+      audit_log: Table<AuditLogRow>;
     };
     Views: Record<string, never>;
     Functions: {

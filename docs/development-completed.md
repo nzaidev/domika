@@ -201,9 +201,29 @@ Background-job decision (plan §12): **Vercel Cron + route handlers** (`vercel.j
 2. `curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/reminders` → `{"ok":true,"checked":N,"notified":N}`.
 3. A row appears in `notifications` for the assignee ("Tarea próxima/vencida: …"); re-running does not re-notify (`reminder_sent_at` marks the task). In production, Vercel Cron calls this automatically every 15 minutes once `CRON_SECRET` is set in the project env. (In-app notification feed UI lands in Phase 3; email/WhatsApp reminder channels attach then too.)
 
+### 14. Agent collaboration network ✅
+
+Two sharing mechanisms, both owner-PII-safe: **direct shares** (`property_shares`: to a specific agent or a whole org, permission levels, optional expiry, view tracking) and the **Domika network** (publish/unpublish to `listing_publications` channel `domika_network`, visible to all other orgs, owner data always hidden).
+
+Testing cross-org features needs **two orgs**: create a second Clerk user in incognito, complete onboarding with a different org name.
+
+**Test — publish to the network:**
+1. Org A: property detail → "Colaboración" → **"Publicar en la red Domika"**.
+2. Org B: `/network` → the property appears under "Red Domika" with Org A's name, cover, price, and a view counter.
+3. Org B clicks it → `/network/listing/{slug}` shows gallery (with zoom), specs, **no owner data** — and the visit increments the view counter (visible to Org A on its detail page and to everyone on the card). The owner viewing their own listing does not inflate the count.
+4. Org A: "Quitar de la red Domika" → it disappears from Org B's feed (the slug 404s).
+
+**Test — direct share with permissions:**
+1. Org A: property detail → Colaboración → pick a recipient (an org = whole team, or a specific agent), permission (Ver sin propietario / Ver ficha / **Completo**), expiry in days (0 = never) → "Compartir propiedad".
+2. Org B: `/network` → "Compartidas conmigo" lists it → opening `/network/shared/{shareId}` shows the property; with "Completo" the owner panel appears, otherwise owner fields are stripped server-side.
+3. View tracking: each open by the recipient records who/when (`audit_log`); Org A sees the count next to the share on the property detail and under "Compartidas por mi organización" on `/network`.
+4. "Revocar" (property detail or /network) → recipient's link 404s immediately.
+5. Expiry: a share created with 0-day... use SQL to set `expires_at` in the past → recipient sees "Este acceso compartido expiró".
+6. Isolation: a user from an unrelated org opening someone else's `/network/shared/{shareId}` gets 404.
+
 ### Pending in Phase 2
 
-Collaboration network UI on `property_shares` (sharing, permissions, view tracking, realtime), brochure designer (WhatsApp flyer + PDF). Calendar view for tasks is a nice-to-have pending item.
+Brochure designer (WhatsApp flyer + PDF). Nice-to-haves pending: realtime updates on shared properties (Supabase Realtime), tasks calendar view, automation-rules management UI.
 
 ---
 

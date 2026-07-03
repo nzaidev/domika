@@ -4,6 +4,15 @@ import { PageHeader } from "@/components/domika/AppWidgets";
 import styles from "@/components/domika/domika-app.module.css";
 import { getPropertyDetail } from "@/lib/domain/properties";
 import {
+  getPropertyCollaboration,
+  getShareDirectory,
+} from "@/lib/domain/network";
+import {
+  revokeShareAction,
+  setNetworkPublicationAction,
+} from "@/app/(app)/network/actions";
+import { SharePanel } from "./SharePanel";
+import {
   formatPrice,
   OPERATION_LABELS,
   STATUS_LABELS,
@@ -43,6 +52,10 @@ export default async function PropertyDetailPage({
   }
 
   const { property, media } = detail;
+  const [collaboration, directory] = await Promise.all([
+    getPropertyCollaboration(property.id),
+    getShareDirectory(),
+  ]);
 
   const specs = [
     { label: "Tipo", value: property.property_type },
@@ -167,6 +180,75 @@ export default async function PropertyDetailPage({
               </div>
             </section>
           ) : null}
+
+          <section className={styles.panel}>
+            <div className={styles.sectionHeader}>
+              <div>
+                <span className={styles.eyebrow}>Colaboración</span>
+                <h2>Red de agentes</h2>
+              </div>
+              <form action={setNetworkPublicationAction}>
+                <input type="hidden" name="propertyId" value={property.id} />
+                <input
+                  type="hidden"
+                  name="publish"
+                  value={collaboration.isPublished ? "false" : "true"}
+                />
+                <button
+                  className={
+                    collaboration.isPublished
+                      ? styles.secondaryButton
+                      : styles.primaryButton
+                  }
+                  type="submit"
+                >
+                  {collaboration.isPublished
+                    ? "Quitar de la red Domika"
+                    : "Publicar en la red Domika"}
+                </button>
+              </form>
+            </div>
+            <p className={styles.mutedText}>
+              {collaboration.isPublished
+                ? "Visible para agentes de otras organizaciones (sin datos del propietario)."
+                : "Publica esta propiedad para que agentes de otras organizaciones la vean, o compártela directamente abajo."}
+            </p>
+
+            <SharePanel propertyId={property.id} directory={directory} />
+
+            {collaboration.shares.length > 0 ? (
+              <div className={styles.fieldList}>
+                {collaboration.shares.map((share) => (
+                  <article className={styles.fieldRow} key={share.shareId}>
+                    <strong>{share.recipientLabel}</strong>
+                    <span>
+                      {share.permission === "full"
+                        ? "Completo"
+                        : share.permission === "view"
+                          ? "Ver ficha"
+                          : "Ver sin propietario"}
+                      {" · "}
+                      {share.viewCount} vista{share.viewCount === 1 ? "" : "s"}
+                      {share.expiresAt
+                        ? ` · expira ${new Date(share.expiresAt).toLocaleDateString("es")}`
+                        : ""}
+                    </span>
+                    <form action={revokeShareAction}>
+                      <input type="hidden" name="shareId" value={share.shareId} />
+                      <input
+                        type="hidden"
+                        name="propertyId"
+                        value={property.id}
+                      />
+                      <button className={styles.ghostButton} type="submit">
+                        Revocar
+                      </button>
+                    </form>
+                  </article>
+                ))}
+              </div>
+            ) : null}
+          </section>
         </div>
 
         <aside className={styles.detailRail}>
