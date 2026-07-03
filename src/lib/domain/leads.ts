@@ -9,13 +9,29 @@ export type LeadsBoardStage = PipelineStageRow & {
   leads: LeadRow[];
 };
 
+export type LeadFilters = {
+  q?: string;
+  source?: LeadRow["source"];
+  assignedTo?: string;
+  businessUnit?: string;
+};
+
+export type BoardMember = { id: string; full_name: string };
+
 export type LeadsBoard =
   | { status: "not_configured" }
   | { status: "unauthenticated" }
   | { status: "profile_missing" }
-  | { status: "ready"; stages: LeadsBoardStage[]; totalLeads: number };
+  | {
+      status: "ready";
+      stages: LeadsBoardStage[];
+      totalLeads: number;
+      members: BoardMember[];
+    };
 
-export async function getLeadsBoard(): Promise<LeadsBoard> {
+export async function getLeadsBoard(
+  filters: LeadFilters = {},
+): Promise<LeadsBoard> {
   const session = await getSessionProfile();
 
   if (session.status !== "authenticated") {
@@ -25,18 +41,45 @@ export async function getLeadsBoard(): Promise<LeadsBoard> {
   const organizationId = session.profile.organization_id;
   const supabase = createAdminSupabaseClient();
 
-  const [stagesResult, leadsResult] = await Promise.all([
+  let leadsQuery = supabase
+    .from("leads")
+    .select("*")
+    .eq("organization_id", organizationId);
+
+  if (filters.q) {
+    const term = filters.q.replace(/[%,()]/g, " ").trim();
+    if (term) {
+      leadsQuery = leadsQuery.or(
+        `full_name.ilike.%${term}%,phone.ilike.%${term}%,email.ilike.%${term}%`,
+      );
+    }
+  }
+
+  if (filters.source) {
+    leadsQuery = leadsQuery.eq("source", filters.source);
+  }
+
+  if (filters.assignedTo) {
+    leadsQuery = leadsQuery.eq("assigned_to", filters.assignedTo);
+  }
+
+  if (filters.businessUnit) {
+    leadsQuery = leadsQuery.eq("business_unit", filters.businessUnit);
+  }
+
+  const [stagesResult, leadsResult, membersResult] = await Promise.all([
     supabase
       .from("pipeline_stages")
       .select("*")
       .eq("organization_id", organizationId)
       .order("position", { ascending: true }),
+    leadsQuery.order("created_at", { ascending: false }).limit(500),
     supabase
-      .from("leads")
-      .select("*")
+      .from("profiles")
+      .select("id, full_name")
       .eq("organization_id", organizationId)
-      .order("created_at", { ascending: false })
-      .limit(500),
+      .eq("active", true)
+      .order("full_name", { ascending: true }),
   ]);
 
   if (stagesResult.error) {
@@ -45,6 +88,10 @@ export async function getLeadsBoard(): Promise<LeadsBoard> {
 
   if (leadsResult.error) {
     throw leadsResult.error;
+  }
+
+  if (membersResult.error) {
+    throw membersResult.error;
   }
 
   const stages = stagesResult.data ?? [];
@@ -74,7 +121,12 @@ export async function getLeadsBoard(): Promise<LeadsBoard> {
     boardStages[0].leads.unshift(...unstaged);
   }
 
-  return { status: "ready", stages: boardStages, totalLeads: leads.length };
+  return {
+    status: "ready",
+    stages: boardStages,
+    totalLeads: leads.length,
+    members: (membersResult.data ?? []) as BoardMember[],
+  };
 }
 
 export type CreateLeadInput = {
