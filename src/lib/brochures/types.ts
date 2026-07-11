@@ -62,4 +62,5 @@ export type BrochureData = {
   agentName: string;
   agentPhone: string | null;
   coverJpeg: Buffer | null;
+  listingUrl: string | null;
 };

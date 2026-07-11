@@ -78,6 +78,7 @@ export async function renderFlyerImage(
   ctx.textBaseline = "alphabetic";
   let y = panelTop + 96;
 
+  // Title + location always lead the panel.
   ctx.fillStyle = "#ffffff";
   ctx.font = `700 52px "${FONT}"`;
   ctx.fillText(truncate(data.title, 34), 60, y);
@@ -92,20 +93,21 @@ export async function renderFlyerImage(
     y += 20;
   }
 
-  if (sections.includes("price")) {
+  // Body blocks in the user's chosen order (cover = hero, agent = footer).
+  const drawPrice = () => {
     ctx.fillStyle = "#ffffff";
     ctx.font = `700 72px "${FONT}"`;
     ctx.fillText(data.priceLabel, 60, y + 30);
-
     ctx.font = `400 30px "${FONT}"`;
     ctx.fillStyle = "rgba(255,255,255,0.85)";
     ctx.textAlign = "right";
     ctx.fillText(data.operationLabel, WIDTH - 60, y + 30);
     ctx.textAlign = "left";
     y += 110;
-  }
+  };
 
-  if (sections.includes("specs") && data.specs.length > 0) {
+  const drawSpecs = () => {
+    if (data.specs.length === 0) return;
     const specLine = data.specs
       .slice(0, 4)
       .map((spec) => `${spec.label} ${spec.value}`)
@@ -114,24 +116,62 @@ export async function renderFlyerImage(
     ctx.font = `400 28px "${FONT}"`;
     ctx.fillText(truncate(specLine, 70), 60, y);
     y += 52;
-  }
+  };
 
-  if (sections.includes("amenities") && data.amenities.length > 0) {
+  const drawDescription = () => {
+    if (!data.description) return;
+    ctx.fillStyle = "rgba(255,255,255,0.8)";
+    ctx.font = `400 26px "${FONT}"`;
+    ctx.fillText(truncate(data.description, 74), 60, y);
+    y += 46;
+  };
+
+  const drawAmenities = () => {
+    if (data.amenities.length === 0) return;
     const amenityLine = data.amenities.slice(0, 5).join("  ·  ");
     ctx.fillStyle = "rgba(255,255,255,0.75)";
     ctx.font = `400 26px "${FONT}"`;
     ctx.fillText(truncate(amenityLine, 74), 60, y);
+    y += 46;
+  };
+
+  const bodyRenderers: Partial<Record<BrochureSection, () => void>> = {
+    price: drawPrice,
+    specs: drawSpecs,
+    description: drawDescription,
+    amenities: drawAmenities,
+  };
+
+  for (const section of sections) {
+    bodyRenderers[section]?.();
   }
 
-  // Footer bar.
-  ctx.fillStyle = "rgba(0,0,0,0.25)";
-  ctx.fillRect(0, HEIGHT - 96, WIDTH, 96);
+  // Footer band — taller, with the agent line and the listing URL beneath it
+  // so recipients can tap through to the full property page.
+  const footerHeight = data.listingUrl ? 132 : 96;
+  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.fillRect(0, HEIGHT - footerHeight, WIDTH, footerHeight);
+
   const footer = sections.includes("agent")
     ? `${data.agentName}${data.agentPhone ? `  ·  ${data.agentPhone}` : ""}  ·  ${data.organizationName}`
     : data.organizationName;
   ctx.fillStyle = "#ffffff";
   ctx.font = `700 28px "${FONT}"`;
-  ctx.fillText(truncate(footer, 68), 60, HEIGHT - 38);
+  ctx.fillText(
+    truncate(footer, 68),
+    60,
+    data.listingUrl ? HEIGHT - 78 : HEIGHT - 38,
+  );
+
+  if (data.listingUrl) {
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.font = `400 26px "${FONT}"`;
+    ctx.fillText(
+      truncate(data.listingUrl.replace(/^https?:\/\//, ""), 74),
+      60,
+      HEIGHT - 34,
+    );
+  }
 
   return canvas.toBuffer("image/jpeg", 88);
 }

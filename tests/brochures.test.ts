@@ -56,6 +56,7 @@ async function sampleData(): Promise<BrochureData> {
     agentName: "María Fernández",
     agentPhone: "+59170000001",
     coverJpeg,
+    listingUrl: "https://domika.io/p/casa-equipetrol-abc123",
   };
 }
 

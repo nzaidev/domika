@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import {
   deleteBrochureTemplate,
   generateBrochure,
@@ -60,10 +61,16 @@ export async function generateBrochureAction(
     };
   }
 
+  const headerList = await headers();
+  const host = headerList.get("host");
+  const protocol = headerList.get("x-forwarded-proto") ?? "https";
+  const baseUrl = host ? `${protocol}://${host}` : null;
+
   const result = await generateBrochure({
     propertyId,
     layout,
     templateId: String(formData.get("templateId") ?? "") || null,
+    baseUrl,
   });
 
   if (result.ok === false) {

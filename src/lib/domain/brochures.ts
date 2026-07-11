@@ -29,6 +29,7 @@ async function buildBrochureData(
   organizationId: string,
   propertyId: string,
   agent: { full_name: string; phone: string | null },
+  listingUrl: string | null,
 ): Promise<BrochureData | null> {
   const [{ data: property }, { data: organization }, { data: media }] =
     await Promise.all([
@@ -61,13 +62,30 @@ async function buildBrochureData(
   const cover = (media ?? [])[0];
 
   if (cover) {
-    // R2 is canonical; fall back to supabase storage for pre-migration files.
     let bytes: ArrayBuffer | null = null;
-    const fromR2 = hasR2Config() ? await r2Download(cover.storage_path) : null;
 
-    if (fromR2) {
-      bytes = fromR2.body;
-    } else {
+    // Prefer the public URL — a plain GET with no S3 credentials, so it works
+    // even if the R2 access keys aren't present in this environment (the
+    // stored public_url or the NEXT_PUBLIC_MEDIA_BASE_URL domain).
+    const publicUrl = cover.public_url ?? mediaUrl(cover.storage_path);
+    if (/^https?:\/\//.test(publicUrl)) {
+      try {
+        const res = await fetch(publicUrl, { cache: "no-store" });
+        if (res.ok) {
+          bytes = await res.arrayBuffer();
+        }
+      } catch {
+        // fall through to credentialed paths
+      }
+    }
+
+    // Fallbacks: R2 S3 API, then legacy supabase storage.
+    if (!bytes && hasR2Config()) {
+      const fromR2 = await r2Download(cover.storage_path);
+      bytes = fromR2?.body ?? null;
+    }
+
+    if (!bytes) {
       const { data: file } = await supabase.storage
         .from("property-media")
         .download(cover.storage_path);
@@ -135,7 +153,74 @@ async function buildBrochureData(
     agentName: agent.full_name,
     agentPhone: agent.phone,
     coverJpeg,
+    listingUrl,
   };
+}
+
+// Ensures a public listing page exists so the flyer/brochure can link to it,
+// and returns its absolute URL. Publishing here is intentional: a shared
+// flyer is useless if its link 404s.
+async function ensureListingUrl(
+  supabase: ReturnType<typeof createAdminSupabaseClient>,
+  organizationId: string,
+  propertyId: string,
+  publishedBy: string,
+  baseUrl: string | null,
+): Promise<string | null> {
+  if (!baseUrl) {
+    return null;
+  }
+
+  const { data: property } = await supabase
+    .from("properties")
+    .select("title")
+    .eq("id", propertyId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+
+  if (!property) {
+    return null;
+  }
+
+  const { data: existing } = await supabase
+    .from("listing_publications")
+    .select("public_slug, status")
+    .eq("organization_id", organizationId)
+    .eq("property_id", propertyId)
+    .eq("channel", "public_link")
+    .maybeSingle();
+
+  let slug = existing?.public_slug ?? null;
+
+  if (!slug) {
+    slug = `${property.title
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 40)}-${randomUUID().slice(0, 6)}`;
+
+    await supabase.from("listing_publications").insert({
+      organization_id: organizationId,
+      property_id: propertyId,
+      channel: "public_link",
+      status: "published",
+      public_slug: slug,
+      published_by: publishedBy,
+      published_at: new Date().toISOString(),
+      options: { hide_owner: true },
+    });
+  } else if (existing?.status !== "published") {
+    await supabase
+      .from("listing_publications")
+      .update({ status: "published", unpublished_at: null })
+      .eq("organization_id", organizationId)
+      .eq("property_id", propertyId)
+      .eq("channel", "public_link");
+  }
+
+  return `${baseUrl.replace(/\/+$/, "")}/p/${slug}`;
 }
 
 export type GenerateBrochureResult =
@@ -146,6 +231,7 @@ export async function generateBrochure(input: {
   propertyId: string;
   layout: BrochureLayout;
   templateId?: string | null;
+  baseUrl?: string | null;
 }): Promise<GenerateBrochureResult> {
   const session = await getSessionProfile();
 
@@ -157,10 +243,21 @@ export async function generateBrochure(input: {
   const supabase = createAdminSupabaseClient();
   const layout = sanitizeLayout(input.layout);
 
-  const data = await buildBrochureData(supabase, organizationId, input.propertyId, {
-    full_name: session.profile.full_name,
-    phone: session.profile.phone,
-  });
+  const listingUrl = await ensureListingUrl(
+    supabase,
+    organizationId,
+    input.propertyId,
+    session.profile.id,
+    input.baseUrl ?? null,
+  );
+
+  const data = await buildBrochureData(
+    supabase,
+    organizationId,
+    input.propertyId,
+    { full_name: session.profile.full_name, phone: session.profile.phone },
+    listingUrl,
+  );
 
   if (!data) {
     return { ok: false, error: "La propiedad no existe." };

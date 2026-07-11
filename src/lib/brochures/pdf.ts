@@ -140,8 +140,9 @@ export async function renderBrochurePdf(
     y -= 22;
   }
 
-  // Price.
-  if (sections.includes("price")) {
+  // Body content blocks — rendered in the order the user arranged them
+  // (cover stays hero-top and agent stays footer; both are structural).
+  const drawPrice = () => {
     page.drawText(data.priceLabel, {
       x: MARGIN,
       y: y - 24,
@@ -150,10 +151,12 @@ export async function renderBrochurePdf(
       color: brand,
     });
     y -= 40;
-  }
+  };
 
-  // Specs, two columns.
-  if (sections.includes("specs") && data.specs.length > 0) {
+  const drawSpecs = () => {
+    if (data.specs.length === 0) {
+      return;
+    }
     const columnWidth = CONTENT_WIDTH / 2;
     const rows = Math.ceil(data.specs.length / 2);
 
@@ -182,25 +185,40 @@ export async function renderBrochurePdf(
       y -= 18;
     }
     y -= 8;
-  }
+  };
 
-  // Description.
-  if (sections.includes("description") && data.description) {
+  const drawDescription = () => {
+    if (!data.description) {
+      return;
+    }
     const lines = wrapText(data.description, font, 11, CONTENT_WIDTH).slice(0, 12);
     for (const line of lines) {
       page.drawText(line, { x: MARGIN, y: y - 13, size: 11, font, color: ink });
       y -= 15;
     }
     y -= 8;
-  }
+  };
 
-  // Amenities.
-  if (sections.includes("amenities") && data.amenities.length > 0) {
+  const drawAmenities = () => {
+    if (data.amenities.length === 0) {
+      return;
+    }
     const text = data.amenities.slice(0, 12).join("  ·  ");
     for (const line of wrapText(text, font, 11, CONTENT_WIDTH).slice(0, 3)) {
       page.drawText(line, { x: MARGIN, y: y - 13, size: 11, font, color: muted });
       y -= 15;
     }
+  };
+
+  const bodyRenderers: Partial<Record<BrochureSection, () => void>> = {
+    price: drawPrice,
+    specs: drawSpecs,
+    description: drawDescription,
+    amenities: drawAmenities,
+  };
+
+  for (const section of sections) {
+    bodyRenderers[section]?.();
   }
 
   // Agent footer band.
