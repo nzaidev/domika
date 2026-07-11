@@ -27,6 +27,12 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.join(__dirname),
   },
+  // Flyer text is rasterized from SVG; the bundled font must ship with the
+  // serverless functions that render brochures (see src/lib/brochures/flyer.ts).
+  outputFileTracingIncludes: {
+    "/brochures": ["./fonts/**"],
+    "/properties/[id]": ["./fonts/**"],
+  },
 };
 
 export default nextConfig;
