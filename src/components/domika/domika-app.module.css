@@ -1402,3 +1402,24 @@ a.propertyCard:hover {
   max-width: 280px;
   width: 100%;
 }
+
+.dangerButton {
+  background: var(--app-coral);
+  border: none;
+  border-radius: 8px;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  padding: 10px 16px;
+  width: fit-content;
+}
+
+.dangerButton:hover {
+  filter: brightness(0.92);
+}
+
+.dangerButton:disabled {
+  cursor: default;
+  opacity: 0.6;
+}

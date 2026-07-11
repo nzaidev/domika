@@ -3,8 +3,10 @@ import { notFound, redirect } from "next/navigation";
 import { PageHeader } from "@/components/domika/AppWidgets";
 import styles from "@/components/domika/domika-app.module.css";
 import { getPropertyDetail } from "@/lib/domain/properties";
+import { getSessionProfile } from "@/lib/auth/session";
 import { PropertyForm } from "../../PropertyForm";
 import { PhotoManager } from "../PhotoManager";
+import { DeletePropertyButton } from "../DeletePropertyButton";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +16,10 @@ export default async function EditPropertyPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const detail = await getPropertyDetail(id);
+  const [detail, session] = await Promise.all([
+    getPropertyDetail(id),
+    getSessionProfile(),
+  ]);
 
   if (detail.status === "not_configured") {
     return (
@@ -59,18 +64,41 @@ export default async function EditPropertyPage({
           <PropertyForm property={detail.property} />
         </section>
 
-        <section className={styles.panel}>
-          <div className={styles.sectionHeader}>
-            <div>
-              <span className={styles.eyebrow}>Fotos</span>
-              <h2>Galería y portada</h2>
+        <div className={styles.leadStack}>
+          <section className={styles.panel}>
+            <div className={styles.sectionHeader}>
+              <div>
+                <span className={styles.eyebrow}>Fotos</span>
+                <h2>Galería y portada</h2>
+              </div>
             </div>
-          </div>
-          <PhotoManager
-            propertyId={detail.property.id}
-            media={detail.media}
-          />
-        </section>
+            <PhotoManager
+              propertyId={detail.property.id}
+              media={detail.media}
+            />
+          </section>
+
+          {session.status === "authenticated" &&
+          session.profile.role !== "agent" ? (
+            <section className={styles.panel}>
+              <div className={styles.sectionHeader}>
+                <div>
+                  <span className={styles.eyebrow}>Zona de riesgo</span>
+                  <h2>Eliminar propiedad</h2>
+                </div>
+              </div>
+              <p className={styles.mutedText}>
+                Borra la propiedad con sus fotos, folletos, publicaciones y
+                compartidos. Para retirarla sin borrar datos, usa el estado
+                “Archivada” en la ficha.
+              </p>
+              <DeletePropertyButton
+                propertyId={detail.property.id}
+                propertyTitle={detail.property.title}
+              />
+            </section>
+          ) : null}
+        </div>
       </div>
     </div>
   );

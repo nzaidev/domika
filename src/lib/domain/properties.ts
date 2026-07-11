@@ -4,6 +4,7 @@ import type {
   PropertyMediaRow,
   PropertyRow,
 } from "@/lib/database.types";
+import { mediaUrl } from "@/lib/media";
 import { normalizePhone } from "@/lib/phone";
 import { getSessionProfile } from "@/lib/auth/session";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -86,7 +87,7 @@ export async function listProperties(
   if (rows.length > 0) {
     const { data: media } = await supabase
       .from("property_media")
-      .select("property_id, public_url, is_cover, position")
+      .select("property_id, storage_path, is_cover, position")
       .eq("organization_id", organizationId)
       .in(
         "property_id",
@@ -97,7 +98,7 @@ export async function listProperties(
 
     for (const item of media ?? []) {
       if (!covers.has(item.property_id)) {
-        covers.set(item.property_id, item.public_url);
+        covers.set(item.property_id, mediaUrl(item.storage_path));
       }
     }
   }
@@ -278,6 +279,78 @@ export async function updateProperty(
   }
 
   return { ok: true, propertyId };
+}
+
+export type DeletePropertyResult = { ok: true } | { ok: false; error: string };
+
+export async function deleteProperty(
+  propertyId: string,
+): Promise<DeletePropertyResult> {
+  const session = await getSessionProfile();
+
+  if (session.status !== "authenticated") {
+    return { ok: false, error: "No hay una sesión activa con perfil." };
+  }
+
+  if (session.profile.role === "agent") {
+    return {
+      ok: false,
+      error: "Solo propietarios y administradores pueden eliminar propiedades.",
+    };
+  }
+
+  const organizationId = session.profile.organization_id;
+  const supabase = createAdminSupabaseClient();
+
+  const { data: property } = await supabase
+    .from("properties")
+    .select("id")
+    .eq("id", propertyId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+
+  if (!property) {
+    return { ok: false, error: "La propiedad no existe." };
+  }
+
+  // Collect storage objects before the rows cascade away.
+  const [{ data: media }, { data: brochures }] = await Promise.all([
+    supabase
+      .from("property_media")
+      .select("storage_path")
+      .eq("organization_id", organizationId)
+      .eq("property_id", propertyId),
+    supabase
+      .from("brochures")
+      .select("storage_path")
+      .eq("organization_id", organizationId)
+      .eq("property_id", propertyId),
+  ]);
+
+  const storagePaths = [
+    ...(media ?? []).map((item) => item.storage_path),
+    ...(brochures ?? [])
+      .map((item) => item.storage_path)
+      .filter((path): path is string => Boolean(path)),
+  ];
+
+  // FKs cascade: media, shares, publications, engagement events, brochures,
+  // and property-linked tasks are removed with the property row.
+  const { error } = await supabase
+    .from("properties")
+    .delete()
+    .eq("id", propertyId)
+    .eq("organization_id", organizationId);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  if (storagePaths.length > 0) {
+    await supabase.storage.from("property-media").remove(storagePaths);
+  }
+
+  return { ok: true };
 }
 
 export type MediaMutationResult = { ok: true } | { ok: false; error: string };

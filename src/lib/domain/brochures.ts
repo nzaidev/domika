@@ -5,6 +5,7 @@ import sharp from "sharp";
 import type { BrochureRow, BrochureTemplateRow } from "@/lib/database.types";
 import { getSessionProfile } from "@/lib/auth/session";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { mediaUrl } from "@/lib/media";
 import { renderBrochurePdf } from "@/lib/brochures/pdf";
 import { renderFlyerImage } from "@/lib/brochures/flyer";
 import {
@@ -187,10 +188,12 @@ export async function generateBrochure(input: {
     title: `${data.title} — ${layout.format === "flyer" ? "Flyer WhatsApp" : "Folleto PDF"}`,
     output_format: layout.format,
     storage_path: storagePath,
+    // public_url kept for external sharing (WhatsApp); the app UI itself
+    // serves through the same-origin /api/media proxy.
     metadata: { public_url: publicUrlData.publicUrl, layout },
   });
 
-  return { ok: true, url: publicUrlData.publicUrl, format: layout.format };
+  return { ok: true, url: mediaUrl(storagePath), format: layout.format };
 }
 
 export type BrochureHistoryItem = {
@@ -250,12 +253,7 @@ export async function getBrochuresOverview(): Promise<BrochuresOverview> {
       id: row.id,
       title: row.title,
       format: row.output_format,
-      url:
-        row.metadata && typeof row.metadata === "object"
-          ? ((row.metadata as Record<string, unknown>).public_url as
-              | string
-              | null) ?? null
-          : null,
+      url: row.storage_path ? mediaUrl(row.storage_path) : null,
       createdAt: row.created_at,
     })),
     properties: properties.data ?? [],

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { PageHeader } from "@/components/domika/AppWidgets";
 import styles from "@/components/domika/domika-app.module.css";
+import { mediaUrl } from "@/lib/media";
 import { getPropertyDetail } from "@/lib/domain/properties";
 import {
   getPropertyCollaboration,
@@ -142,13 +143,11 @@ export default async function PropertyDetailPage({
             </div>
             {media.length > 0 ? (
               <PropertyGallery
-                images={media
-                  .filter((item) => item.public_url)
-                  .map((item) => ({
-                    id: item.id,
-                    src: item.public_url as string,
-                    alt: item.alt_text ?? property.title,
-                  }))}
+                images={media.map((item) => ({
+                  id: item.id,
+                  src: mediaUrl(item.storage_path),
+                  alt: item.alt_text ?? property.title,
+                }))}
               />
             ) : (
               <p className={styles.mutedText}>

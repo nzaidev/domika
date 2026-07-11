@@ -8,6 +8,7 @@ import type {
 } from "@/lib/database.types";
 import { getSessionProfile } from "@/lib/auth/session";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { mediaUrl } from "@/lib/media";
 
 // Agent collaboration network: direct shares (agent/org, permission levels,
 // expiry, view tracking via audit_log) and the Domika network channel
@@ -45,14 +46,14 @@ async function coversFor(
 
   const { data } = await supabase
     .from("property_media")
-    .select("property_id, public_url, is_cover, position")
+    .select("property_id, storage_path, is_cover, position")
     .in("property_id", propertyIds)
     .order("is_cover", { ascending: false })
     .order("position", { ascending: true });
 
   for (const item of data ?? []) {
     if (!covers.has(item.property_id)) {
-      covers.set(item.property_id, item.public_url);
+      covers.set(item.property_id, mediaUrl(item.storage_path));
     }
   }
 
@@ -688,7 +689,7 @@ export async function getSharedPropertyView(
         .maybeSingle(),
       supabase
         .from("property_media")
-        .select("id, public_url, alt_text, position, is_cover")
+        .select("id, storage_path, alt_text, position, is_cover")
         .eq("property_id", share.property_id)
         .order("position", { ascending: true }),
     ]);
@@ -733,13 +734,11 @@ export async function getSharedPropertyView(
     property,
     permission: share.permission,
     sharedByOrganization: owner?.name ?? "Organización",
-    media: (media ?? [])
-      .filter((item) => item.public_url)
-      .map((item) => ({
-        id: item.id,
-        url: item.public_url as string,
-        alt: item.alt_text ?? property.title,
-      })),
+    media: (media ?? []).map((item) => ({
+      id: item.id,
+      url: mediaUrl(item.storage_path),
+      alt: item.alt_text ?? property.title,
+    })),
   };
 }
 
@@ -790,7 +789,7 @@ export async function getNetworkListingView(
         .maybeSingle(),
       supabase
         .from("property_media")
-        .select("id, public_url, alt_text, position")
+        .select("id, storage_path, alt_text, position")
         .eq("property_id", publication.property_id)
         .order("position", { ascending: true }),
     ]);
@@ -823,13 +822,11 @@ export async function getNetworkListingView(
     status: "ready",
     property,
     organizationName: owner?.name ?? "Organización",
-    media: (media ?? [])
-      .filter((item) => item.public_url)
-      .map((item) => ({
-        id: item.id,
-        url: item.public_url as string,
-        alt: item.alt_text ?? property.title,
-      })),
+    media: (media ?? []).map((item) => ({
+      id: item.id,
+      url: mediaUrl(item.storage_path),
+      alt: item.alt_text ?? property.title,
+    })),
     viewCount: viewCount ?? 0,
   };
 }

@@ -3,6 +3,7 @@ import "server-only";
 import type { ProfileRow } from "@/lib/database.types";
 import { getSessionProfile } from "@/lib/auth/session";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { mediaUrl } from "@/lib/media";
 import type { PropertyWithCover } from "@/lib/domain/properties";
 
 export type DashboardOverview =
@@ -78,7 +79,7 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
   if (recentRows.length > 0) {
     const { data: media } = await supabase
       .from("property_media")
-      .select("property_id, public_url, is_cover, position")
+      .select("property_id, storage_path, is_cover, position")
       .eq("organization_id", organizationId)
       .in(
         "property_id",
@@ -89,7 +90,7 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
 
     for (const item of media ?? []) {
       if (!covers.has(item.property_id)) {
-        covers.set(item.property_id, item.public_url);
+        covers.set(item.property_id, mediaUrl(item.storage_path));
       }
     }
   }

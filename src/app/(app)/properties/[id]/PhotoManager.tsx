@@ -5,6 +5,7 @@ import { useRef, useState, useTransition } from "react";
 import styles from "@/components/domika/domika-app.module.css";
 import type { PropertyMediaRow } from "@/lib/database.types";
 import { prepareImageForUpload } from "@/lib/image-client";
+import { mediaUrl } from "@/lib/media";
 import {
   deleteMediaAction,
   moveMediaAction,
@@ -113,17 +114,13 @@ export function PhotoManager({
         <div className={styles.photoList}>
           {media.map((item, index) => (
             <article className={styles.photoRow} key={item.id}>
-              {item.public_url ? (
-                // eslint-disable-next-line @next/next/no-img-element -- thumbnails already normalized server-side
-                <img
-                  src={item.public_url}
-                  alt={item.alt_text ?? "Foto de la propiedad"}
-                  className={styles.photoThumb}
-                  loading="lazy"
-                />
-              ) : (
-                <div className={styles.photoThumb} />
-              )}
+              {/* eslint-disable-next-line @next/next/no-img-element -- thumbnails already normalized server-side */}
+              <img
+                src={mediaUrl(item.storage_path)}
+                alt={item.alt_text ?? "Foto de la propiedad"}
+                className={styles.photoThumb}
+                loading="lazy"
+              />
               <div className={styles.photoMeta}>
                 <strong>
                   {item.is_cover ? "Portada" : `Foto ${index + 1}`}

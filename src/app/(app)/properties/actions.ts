@@ -2,9 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import type { PropertyRow } from "@/lib/database.types";
+import { redirect } from "next/navigation";
 import {
   createProperty,
   deleteMedia,
+  deleteProperty,
   moveMedia,
   setCoverMedia,
   updateProperty,
@@ -94,6 +96,28 @@ export async function savePropertyAction(
   revalidatePath("/dashboard");
 
   return { error: null, propertyId: result.propertyId };
+}
+
+export type DeletePropertyFormState = {
+  error: string | null;
+};
+
+export async function deletePropertyAction(
+  _previousState: DeletePropertyFormState,
+  formData: FormData,
+): Promise<DeletePropertyFormState> {
+  const propertyId = String(formData.get("propertyId") ?? "");
+  const result = await deleteProperty(propertyId);
+
+  if (result.ok === false) {
+    return { error: result.error };
+  }
+
+  revalidatePath("/properties");
+  revalidatePath("/dashboard");
+  revalidatePath("/network");
+
+  redirect("/properties");
 }
 
 export async function setCoverAction(formData: FormData) {
