@@ -17,6 +17,9 @@ function notificationLink(notification: NotificationRow): string | null {
   if (typeof metadata.task_id === "string") {
     return "/tasks";
   }
+  if (typeof metadata.requirement_id === "string") {
+    return "/matching";
+  }
   if (typeof metadata.lead_id === "string") {
     return `/leads/${metadata.lead_id}`;
   }

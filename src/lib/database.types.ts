@@ -413,6 +413,37 @@ export type BrochureRow = {
   updated_at: string;
 };
 
+export type BuyerRequirementRow = {
+  id: string;
+  organization_id: string;
+  lead_id: string | null;
+  created_by: string | null;
+  property_type: string | null;
+  operation: "sale" | "rent" | "investment" | null;
+  budget_min: number | null;
+  budget_max: number | null;
+  city: string | null;
+  zone: string | null;
+  bedrooms_min: number | null;
+  area_min_sqm: number | null;
+  notes: string | null;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type DemandMatchRow = {
+  id: string;
+  organization_id: string;
+  buyer_requirement_id: string;
+  property_id: string;
+  score: number;
+  reasons: Json;
+  notified_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type DocumentStatus = "draft" | "generated" | "sent" | "signed" | "void";
 export type SignatureStatus =
   | "not_required"
@@ -495,6 +526,8 @@ export type Database = {
       brochures: Table<BrochureRow>;
       contract_templates: Table<ContractTemplateRow>;
       contracts: Table<ContractRow>;
+      buyer_requirements: Table<BuyerRequirementRow>;
+      demand_matches: Table<DemandMatchRow>;
     };
     Views: {
       properties_network_safe: {

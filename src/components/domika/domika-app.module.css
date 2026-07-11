@@ -1473,3 +1473,9 @@ a.propertyCard:hover {
 .notificationUnread {
   border-left: 3px solid var(--app-green);
 }
+
+.pillStrong {
+  background: var(--app-mint);
+  color: var(--app-green-deep);
+  font-weight: 700;
+}

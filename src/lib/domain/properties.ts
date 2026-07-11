@@ -7,6 +7,7 @@ import type {
 import { mediaUrl } from "@/lib/media";
 import { r2Delete } from "@/lib/storage/r2";
 import { normalizePhone } from "@/lib/phone";
+import { runMatchingForProperty } from "@/lib/domain/matching";
 import { getSessionProfile } from "@/lib/auth/session";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
@@ -245,6 +246,8 @@ export async function createProperty(
     return { ok: false, error: error?.message ?? "No se pudo crear la propiedad." };
   }
 
+  await runMatchingForProperty(data.id);
+
   return { ok: true, propertyId: data.id };
 }
 
@@ -278,6 +281,8 @@ export async function updateProperty(
   if (!data) {
     return { ok: false, error: "La propiedad no existe." };
   }
+
+  await runMatchingForProperty(propertyId);
 
   return { ok: true, propertyId };
 }

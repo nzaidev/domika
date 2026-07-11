@@ -9,6 +9,7 @@ import type {
 import { getSessionProfile } from "@/lib/auth/session";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { mediaUrl } from "@/lib/media";
+import { runMatchingForProperty } from "@/lib/domain/matching";
 
 // Agent collaboration network: direct shares (agent/org, permission levels,
 // expiry, view tracking via audit_log) and the Domika network channel
@@ -516,6 +517,9 @@ export async function setNetworkPublication(input: {
     if (error) {
       return { ok: false, error: error.message };
     }
+
+    // Publishing exposes the property to every org's requirements.
+    await runMatchingForProperty(input.propertyId);
   } else if (existing) {
     const { error } = await supabase
       .from("listing_publications")

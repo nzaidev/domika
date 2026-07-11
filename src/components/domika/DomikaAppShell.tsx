@@ -14,6 +14,7 @@ const navItems = [
   { href: "/brochures", label: "Folletos" },
   { href: "/contracts", label: "Contratos" },
   { href: "/network", label: "Red de agentes" },
+  { href: "/matching", label: "Coincidencias" },
   { href: "/tasks", label: "Tareas" },
   { href: "/settings", label: "Ajustes" },
 ];

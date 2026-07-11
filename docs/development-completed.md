@@ -286,9 +286,20 @@ Templates with `{{variable}}` placeholders auto-filled from lead + property + or
 4. Status tracking: per contract, set estado (Borrador/Generado/Enviado/Firmado/Anulado) and firma (Pendiente/Firmado/Rechazado/Expirado) → "Actualizar". E-signature vendor integration (DocuSeal or hosted) is pending the §12 decision — statuses are manual until then.
 5. Lead-linked contracts write a "Contrato generado" entry in the lead's timeline; the seeded "Reserva de inmueble" template works out of the box.
 
+### 18. Demand matching ✅
+
+Buyer requirements auto-match against your inventory **and** other orgs' Domika-network listings (owner data never included). Scoring is a weighted comparison (operación 15 / tipo 20 / presupuesto 25 con ±10% de tolerancia / zona 15 / ciudad 10 / dormitorios 10 / superficie 5), normalized so only the criteria you specify count; an operation mismatch (alquiler vs venta) disqualifies outright. Matches ≥50% are stored.
+
+**Test:**
+1. `/matching` (nav: "Coincidencias") → right panel: pick an optional prospecto, set criteria (tipo, operación, presupuesto, ciudad/zona, dormitorios, superficie) → "Crear requerimiento" → matches compute immediately, sorted by score with reasons ("Precio dentro del presupuesto · Zona coincide…").
+2. Auto-match on new supply: create a new property that fits an active requirement → the match appears on `/matching` without re-running anything, and the requirement's creator gets a 🔔 notification ("N nuevas coincidencias"). Editing a property or publishing it to the network also re-matches.
+3. Cross-org: a requirement in org A matches org B's network-published listing → the card shows "Red Domika · {org}" and links to the network listing view (owner data stripped); org B's unpublished properties never appear.
+4. Lead-linked requirements log to the lead's timeline; "Archivar" retires a requirement.
+5. Scorer edge cases are unit-tested (9 cases: tolerance, normalization, accents, disqualification).
+
 ### Pending in Phase 3
 
-Email integration (Gmail/Outlook OAuth, sequences), demand matching, WhatsApp outbound send, e-signature vendor integration, Google Chat webhook.
+Email integration (Gmail/Outlook OAuth, sequences), WhatsApp outbound send (incl. match cards por WhatsApp), e-signature vendor integration, Google Chat webhook.
 
 ## Testing & security posture
 
