@@ -125,3 +125,46 @@ export async function runAutomationRules(
     console.error("[automation] rule execution failed:", error);
   }
 }
+
+// Fired when a lead is CREATED (any source: manual, WhatsApp, Meta Ads,
+// public inquiry). A lead born directly in the first pipeline stage never
+// emits a stage_change event, so without this the seeded "new lead →
+// follow-up" rule (trigger stage_change, to_stage "Nuevo") only ran for
+// leads manually moved into that stage. Now every ingress path fires it,
+// so new-lead automation is consistent regardless of source.
+export async function runNewLeadAutomation(context: {
+  organizationId: string;
+  leadId: string;
+  leadName?: string;
+  stageId: string | null;
+  assignedTo?: string | null;
+  actorProfileId?: string | null;
+}): Promise<void> {
+  if (!context.stageId) {
+    return;
+  }
+
+  try {
+    const supabase = createAdminSupabaseClient();
+    const { data: stage } = await supabase
+      .from("pipeline_stages")
+      .select("name")
+      .eq("id", context.stageId)
+      .maybeSingle();
+
+    if (!stage) {
+      return;
+    }
+
+    await runAutomationRules("stage_change", {
+      organizationId: context.organizationId,
+      leadId: context.leadId,
+      leadName: context.leadName,
+      toStageName: stage.name,
+      assignedTo: context.assignedTo,
+      actorProfileId: context.actorProfileId,
+    });
+  } catch (error) {
+    console.error("[automation] new-lead run failed:", error);
+  }
+}

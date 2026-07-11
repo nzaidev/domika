@@ -208,6 +208,9 @@ export async function importLeads(
     };
   });
 
+  // Bulk import intentionally does NOT fire new-lead automation: a 500-row
+  // CSV is a migration, not organic inflow, and per-row follow-up tasks
+  // would flood the agenda. Organic paths (manual/WhatsApp/Meta/public) do.
   let created = 0;
 
   for (let offset = 0; offset < inserts.length; offset += INSERT_CHUNK_SIZE) {

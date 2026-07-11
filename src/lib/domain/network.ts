@@ -11,6 +11,7 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { mediaUrl } from "@/lib/media";
 import { normalizePhone } from "@/lib/phone";
 import { runMatchingForProperty } from "@/lib/domain/matching";
+import { runNewLeadAutomation } from "@/lib/domain/automation";
 
 // Agent collaboration network: direct shares (agent/org, permission levels,
 // expiry, view tracking via audit_log) and the Domika network channel
@@ -939,6 +940,14 @@ export async function capturePublicListingLead(input: {
 
     leadId = lead.id;
     isNew = true;
+
+    await runNewLeadAutomation({
+      organizationId,
+      leadId,
+      leadName: fullName,
+      stageId: firstStage?.id ?? null,
+      assignedTo: publication.published_by,
+    });
   }
 
   await Promise.all([

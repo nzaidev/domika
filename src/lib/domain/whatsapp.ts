@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import type { Json } from "@/lib/database.types";
 import { normalizePhone } from "@/lib/phone";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
-import { runAutomationRules } from "@/lib/domain/automation";
+import { runAutomationRules, runNewLeadAutomation } from "@/lib/domain/automation";
 import { decryptSecret } from "@/lib/crypto/secret-box";
 
 const GRAPH_API_BASE = "https://graph.facebook.com/v21.0";
@@ -350,6 +350,13 @@ async function ingestMessage(
       organizationId,
       leadId,
       leadName: contactName ?? contactPhone,
+    });
+
+    await runNewLeadAutomation({
+      organizationId,
+      leadId,
+      leadName: contactName ?? contactPhone,
+      stageId: firstStage?.id ?? null,
     });
   }
 

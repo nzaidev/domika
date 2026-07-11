@@ -2,6 +2,7 @@ import "server-only";
 
 import type { LeadRow, PipelineStageRow } from "@/lib/database.types";
 import { normalizePhone } from "@/lib/phone";
+import { runNewLeadAutomation } from "@/lib/domain/automation";
 import { getSessionProfile } from "@/lib/auth/session";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
@@ -194,6 +195,15 @@ export async function createLead(
     activity_type: "note",
     title: "Prospecto creado",
     body: `Creado manualmente por ${session.profile.full_name}.`,
+  });
+
+  await runNewLeadAutomation({
+    organizationId,
+    leadId: lead.id,
+    leadName: fullName,
+    stageId: firstStage?.id ?? null,
+    assignedTo: session.profile.id,
+    actorProfileId: session.profile.id,
   });
 
   return { ok: true, leadId: lead.id };

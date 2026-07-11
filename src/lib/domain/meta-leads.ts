@@ -3,6 +3,7 @@ import "server-only";
 import { normalizePhone } from "@/lib/phone";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { decryptSecret } from "@/lib/crypto/secret-box";
+import { runNewLeadAutomation } from "@/lib/domain/automation";
 
 const GRAPH_API_BASE = "https://graph.facebook.com/v21.0";
 
@@ -230,6 +231,13 @@ export async function ingestMetaLeadsWebhook(
           ? "Formulario de Lead Ads recibido con datos de contacto."
           : "Formulario recibido; configura el token de página para importar los datos de contacto.",
         metadata: sourceMeta,
+      });
+
+      await runNewLeadAutomation({
+        organizationId,
+        leadId: newLead.id,
+        leadName: fieldData?.fullName || `Lead Meta Ads ${leadgenId}`,
+        stageId: firstStage?.id ?? null,
       });
 
       summary.created += 1;
