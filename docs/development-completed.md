@@ -315,9 +315,19 @@ Buyer requirements auto-match against your inventory **and** other orgs' Domika-
 
 The app now works phone-first: below 1180px the sidebar becomes a sticky horizontal nav strip (previously navigation disappeared entirely on mobile); below 820px the kanban becomes horizontally swipeable with fixed-width columns, filter bars stack, photo/publication rows reflow, chat bubbles widen, and forms go single-column. **Test:** open any page at ~390px width — every tab must be reachable and every form usable.
 
+### 22. Workflow gap fixes ✅
+
+**Lead edit + reassign:** lead detail → "Editar contacto" (collapsible) → fix name/phone/email/zone/type/budget and change the **responsable**. Reassignment writes a timeline entry ("Reasignado a X") and sends the new assignee a 🔔 notification; contact edits log "Datos de contacto actualizados". Phones re-normalize to +591.
+
+**Public-page lead capture:** every `/p/{slug}` page now ends with "¿Te interesa esta propiedad?" — name + phone/email + message. Submissions create a lead in the owning org (source: Publicación, assigned to the publisher, first stage), write the message to the timeline, record the attribution + a "lead" engagement event, and notify the publisher. Repeat inquiries from the same phone/email fold into the existing lead instead of duplicating. Honeypot field filters naive bots.
+
+**Org branding settings:** `/settings` → "Marca" (owner/admin): organization name + brand color picker — drives flyers, brochure PDFs, contracts, and public pages from the next generation onward.
+
+**Profile settings:** `/settings` → "Perfil": any member edits their own name/phone (what prints on brochures and contracts).
+
 ### Pending in Phase 3
 
-Email integration (Gmail/Outlook OAuth, sequences), WhatsApp outbound send (incl. match cards por WhatsApp), e-signature vendor integration, Google Chat webhook. Token storage note: Meta access tokens are stored in the DB (server-only access); at-rest encryption is a pre-launch hardening item.
+Email integration (Gmail/Outlook OAuth, sequences), WhatsApp outbound send (incl. match cards por WhatsApp), e-signature vendor integration, Google Chat webhook. Smaller pending: business-unit pipelines UI, Excel (.xlsx) import, invitation emails (needs email provider), org logo upload. Token storage note: Meta access tokens are stored in the DB (server-only access); at-rest encryption is a pre-launch hardening item.
 
 ## Testing & security posture
 

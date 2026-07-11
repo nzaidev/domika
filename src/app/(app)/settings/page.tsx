@@ -5,7 +5,9 @@ import type { AppRole } from "@/lib/database.types";
 import { getTeamOverview } from "@/lib/domain/invitations";
 import { getPipelineStages } from "@/lib/domain/pipeline";
 import { getIntegrationsState } from "@/lib/domain/integrations";
+import { getBrandingState } from "@/lib/domain/account";
 import { MetaPagesPanel, WhatsappPanel } from "./IntegrationsPanel";
+import { BrandingPanel, ProfilePanel } from "./AccountPanels";
 import { revokeInvitationAction } from "./actions";
 import { CopyInviteLinkButton } from "./CopyInviteLinkButton";
 import { InviteForm } from "./InviteForm";
@@ -44,9 +46,10 @@ export default async function SettingsPage() {
   }
 
   const canManageTeam = team.profile.role !== "agent";
-  const [stages, integrations] = await Promise.all([
+  const [stages, integrations, branding] = await Promise.all([
     getPipelineStages(),
     getIntegrationsState(),
+    getBrandingState(),
   ]);
 
   return (
@@ -61,6 +64,32 @@ export default async function SettingsPage() {
           </span>
         }
       />
+
+      {branding ? (
+        <div className={styles.splitGrid}>
+          <section className={styles.panel}>
+            <div className={styles.sectionHeader}>
+              <div>
+                <span className={styles.eyebrow}>Tu cuenta</span>
+                <h2>Perfil</h2>
+              </div>
+            </div>
+            <ProfilePanel branding={branding} />
+          </section>
+
+          {canManageTeam ? (
+            <section className={styles.panel}>
+              <div className={styles.sectionHeader}>
+                <div>
+                  <span className={styles.eyebrow}>Organización</span>
+                  <h2>Marca</h2>
+                </div>
+              </div>
+              <BrandingPanel branding={branding} />
+            </section>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className={styles.splitGrid}>
         <section className={styles.panel}>

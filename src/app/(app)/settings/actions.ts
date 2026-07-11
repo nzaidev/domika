@@ -87,6 +87,48 @@ export async function pipelineAction(
   return { error: null };
 }
 
+export type AccountFormState = {
+  error: string | null;
+  saved: boolean;
+};
+
+export async function updateProfileAction(
+  _previousState: AccountFormState,
+  formData: FormData,
+): Promise<AccountFormState> {
+  const { updateOwnProfile } = await import("@/lib/domain/account");
+  const result = await updateOwnProfile({
+    fullName: String(formData.get("fullName") ?? ""),
+    phone: String(formData.get("phone") ?? ""),
+  });
+
+  if (result.ok === false) {
+    return { error: result.error, saved: false };
+  }
+
+  revalidatePath("/settings");
+  revalidatePath("/dashboard");
+  return { error: null, saved: true };
+}
+
+export async function updateBrandingAction(
+  _previousState: AccountFormState,
+  formData: FormData,
+): Promise<AccountFormState> {
+  const { updateOrganizationBranding } = await import("@/lib/domain/account");
+  const result = await updateOrganizationBranding({
+    name: String(formData.get("name") ?? ""),
+    brandColor: String(formData.get("brandColor") ?? ""),
+  });
+
+  if (result.ok === false) {
+    return { error: result.error, saved: false };
+  }
+
+  revalidatePath("/settings");
+  return { error: null, saved: true };
+}
+
 export type IntegrationFormState = {
   error: string | null;
   saved: boolean;

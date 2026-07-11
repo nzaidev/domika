@@ -1653,3 +1653,27 @@ a.propertyCard:hover {
   padding: 18px 20px;
   text-align: center;
 }
+
+.editDetails {
+  display: grid;
+  gap: 12px;
+}
+
+.editDetails summary {
+  cursor: pointer;
+  list-style: none;
+  text-align: center;
+}
+
+.editDetails summary::-webkit-details-marker {
+  display: none;
+}
+
+.colorInput {
+  background: #ffffff;
+  border: 1px solid var(--app-soft);
+  border-radius: 8px;
+  height: 42px;
+  padding: 4px;
+  width: 100%;
+}

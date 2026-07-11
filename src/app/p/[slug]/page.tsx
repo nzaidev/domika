@@ -7,6 +7,7 @@ import {
   OPERATION_LABELS,
 } from "@/app/(app)/properties/labels";
 import { PropertyGallery } from "@/app/(app)/properties/[id]/PropertyGallery";
+import { InquiryForm } from "./InquiryForm";
 
 export const dynamic = "force-dynamic";
 
@@ -140,6 +141,11 @@ export default async function PublicListingPage({
             </div>
           </section>
         ) : null}
+
+        <section className={styles.panel}>
+          <h2>¿Te interesa esta propiedad?</h2>
+          <InquiryForm slug={slug} organizationName={organizationName} />
+        </section>
       </main>
 
       <footer className={styles.publicFooter}>

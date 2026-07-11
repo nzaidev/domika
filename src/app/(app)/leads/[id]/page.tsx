@@ -5,6 +5,7 @@ import styles from "@/components/domika/domika-app.module.css";
 import type { LeadActivityRow } from "@/lib/database.types";
 import { getLeadDetail } from "@/lib/domain/lead-detail";
 import { NoteForm, StageForm } from "./LeadDetailForms";
+import { EditLeadForm } from "./EditLeadForm";
 
 export const dynamic = "force-dynamic";
 
@@ -70,8 +71,16 @@ export default async function LeadDetailPage({
     notFound();
   }
 
-  const { lead, stages, currentStage, assignee, activities, thread, messages } =
-    detail;
+  const {
+    lead,
+    stages,
+    currentStage,
+    assignee,
+    members,
+    activities,
+    thread,
+    messages,
+  } = detail;
   const budget = formatBudget(lead.budget_min, lead.budget_max);
 
   const facts = [
@@ -225,6 +234,8 @@ export default async function LeadDetailPage({
               </article>
             ))}
           </div>
+
+          <EditLeadForm lead={lead} members={members} />
 
           <StageForm
             leadId={lead.id}

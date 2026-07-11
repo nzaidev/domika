@@ -9,6 +9,7 @@ import type {
 import { getSessionProfile } from "@/lib/auth/session";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { mediaUrl } from "@/lib/media";
+import { normalizePhone } from "@/lib/phone";
 import { runMatchingForProperty } from "@/lib/domain/matching";
 
 // Agent collaboration network: direct shares (agent/org, permission levels,
@@ -837,6 +838,151 @@ export async function getPublicListingView(
       alt: item.alt_text ?? property.title,
     })),
   };
+}
+
+export type PublicLeadResult = { ok: true } | { ok: false; error: string };
+
+// Anonymous lead capture from the public listing page: creates (or folds
+// into) a lead in the OWNING org, with attribution + engagement event and
+// a notification to the publisher. No session involved by design.
+export async function capturePublicListingLead(input: {
+  slug: string;
+  fullName: string;
+  phone?: string | null;
+  email?: string | null;
+  message?: string | null;
+}): Promise<PublicLeadResult> {
+  const fullName = input.fullName.trim();
+  const phone = normalizePhone(input.phone);
+  const email = input.email?.trim().toLowerCase() || null;
+
+  if (fullName.length < 2) {
+    return { ok: false, error: "Ingresa tu nombre." };
+  }
+
+  if (!phone && !email) {
+    return { ok: false, error: "Deja un teléfono o un email para contactarte." };
+  }
+
+  const supabase = createAdminSupabaseClient();
+  const { data: publication } = await supabase
+    .from("listing_publications")
+    .select("id, organization_id, property_id, published_by")
+    .eq("public_slug", input.slug)
+    .eq("channel", "public_link")
+    .eq("status", "published")
+    .maybeSingle();
+
+  if (!publication) {
+    return { ok: false, error: "La publicación ya no está disponible." };
+  }
+
+  const organizationId = publication.organization_id;
+  const message = input.message?.trim().slice(0, 1000) || null;
+
+  // Fold repeat inquiries into the existing lead.
+  let leadId: string | null = null;
+
+  if (phone) {
+    const { data } = await supabase
+      .from("leads")
+      .select("id")
+      .eq("organization_id", organizationId)
+      .eq("phone", phone)
+      .maybeSingle();
+    leadId = data?.id ?? null;
+  }
+
+  if (!leadId && email) {
+    const { data } = await supabase
+      .from("leads")
+      .select("id")
+      .eq("organization_id", organizationId)
+      .eq("email", email)
+      .maybeSingle();
+    leadId = data?.id ?? null;
+  }
+
+  let isNew = false;
+
+  if (!leadId) {
+    const { data: firstStage } = await supabase
+      .from("pipeline_stages")
+      .select("id")
+      .eq("organization_id", organizationId)
+      .order("position", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    const { data: lead, error } = await supabase
+      .from("leads")
+      .insert({
+        organization_id: organizationId,
+        stage_id: firstStage?.id ?? null,
+        assigned_to: publication.published_by,
+        full_name: fullName,
+        phone,
+        email,
+        source: "listing",
+        source_meta: {
+          listing_publication_id: publication.id,
+          property_id: publication.property_id,
+          source: "public_link",
+        },
+      })
+      .select("id")
+      .single();
+
+    if (error || !lead) {
+      return { ok: false, error: "No se pudo enviar la consulta. Intenta de nuevo." };
+    }
+
+    leadId = lead.id;
+    isNew = true;
+  }
+
+  await Promise.all([
+    supabase.from("lead_activities").insert({
+      organization_id: organizationId,
+      lead_id: leadId,
+      activity_type: "message",
+      title: isNew
+        ? "Consulta desde la página pública"
+        : "Nueva consulta desde la página pública",
+      body: message,
+    }),
+    supabase
+      .from("listing_lead_attributions")
+      .upsert(
+        {
+          organization_id: organizationId,
+          lead_id: leadId,
+          listing_publication_id: publication.id,
+          property_id: publication.property_id,
+          source: "public_link",
+          metadata: message ? { message } : {},
+        },
+        { onConflict: "organization_id,lead_id,listing_publication_id" },
+      ),
+    supabase.from("listing_engagement_events").insert({
+      organization_id: organizationId,
+      listing_publication_id: publication.id,
+      property_id: publication.property_id,
+      event_type: "lead",
+      source: "public_link",
+    }),
+    publication.published_by
+      ? supabase.from("notifications").insert({
+          organization_id: organizationId,
+          profile_id: publication.published_by,
+          title: `Nueva consulta: ${fullName}`,
+          body: message ?? undefined,
+          metadata: { lead_id: leadId, kind: "public_listing_lead" },
+        })
+      : Promise.resolve(),
+  ]);
+
+  return { ok: true };
 }
 
 export type NetworkListingView =
