@@ -12,6 +12,7 @@ const navItems = [
   { href: "/properties", label: "Propiedades" },
   { href: "/listings", label: "Promoción" },
   { href: "/brochures", label: "Folletos" },
+  { href: "/contracts", label: "Contratos" },
   { href: "/network", label: "Red de agentes" },
   { href: "/tasks", label: "Tareas" },
   { href: "/settings", label: "Ajustes" },
@@ -21,7 +22,13 @@ function isActivePath(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function DomikaAppShell({ children }: { children: React.ReactNode }) {
+export function DomikaAppShell({
+  children,
+  unreadNotifications = 0,
+}: {
+  children: React.ReactNode;
+  unreadNotifications?: number;
+}) {
   const pathname = usePathname();
 
   return (
@@ -89,6 +96,18 @@ export function DomikaAppShell({ children }: { children: React.ReactNode }) {
             />
           </form>
           <div className={styles.topActions}>
+            <Link
+              className={styles.bellLink}
+              href="/notifications"
+              aria-label={`Notificaciones${unreadNotifications > 0 ? ` (${unreadNotifications} sin leer)` : ""}`}
+            >
+              🔔
+              {unreadNotifications > 0 ? (
+                <span className={styles.bellBadge}>
+                  {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                </span>
+              ) : null}
+            </Link>
             <Link className={styles.secondaryButton} href="/leads/import">
               Importar
             </Link>

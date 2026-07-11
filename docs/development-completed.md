@@ -269,6 +269,27 @@ These are in the plan's Phase 2 scope and were consciously deferred — tracked 
 | Automation-rules management UI (rules run; managed via SQL) | §7 Auto-task rules | Phase 3 |
 | Freeform drag-drop brochure canvas (section-based editor shipped) | §7 Brochure designer | Backlog — revisit after client feedback |
 
+## Phase 3 — Documents + Communication + Matching 🔶 (in progress)
+
+### 16. In-app notifications feed ✅
+
+**Test:** the 🔔 bell in the top bar shows the unread count. Create a task due within the hour, run the reminders cron (see §13), reload → badge appears; `/notifications` lists it newest-first with an "Abrir" link, per-item "Marcar leída", and "Marcar todas leídas".
+
+### 17. Contracts ({{variables}} → PDF + signature tracking) ✅
+
+Templates with `{{variable}}` placeholders auto-filled from lead + property + org + agent, rendered to a multi-page A4 PDF, stored in the **private `documents` bucket** and served only via the authed, org-checked `/api/documents` route (never the public media domain).
+
+**Test:**
+1. `/contracts` (in the nav) → right panel → create a template: name, type (captación/reserva/alquiler/promesa/comisión), body using variables — the full list is shown under the editor (`{{lead_name}}`, `{{property_title}}`, `{{property_price}}`, `{{owner_name}}`, `{{agent_name}}`, `{{date}}`…).
+2. Generator: pick template + prospecto + propiedad → "Generar contrato PDF" → success note reports any fields that had no data (rendered as "________" blanks in the PDF).
+3. "Abrir PDF" → multi-page A4 with org header, filled body, and signature lines; the URL is `/api/documents/...` — opening it from another org's session (or signed out) 404s/401s.
+4. Status tracking: per contract, set estado (Borrador/Generado/Enviado/Firmado/Anulado) and firma (Pendiente/Firmado/Rechazado/Expirado) → "Actualizar". E-signature vendor integration (DocuSeal or hosted) is pending the §12 decision — statuses are manual until then.
+5. Lead-linked contracts write a "Contrato generado" entry in the lead's timeline; the seeded "Reserva de inmueble" template works out of the box.
+
+### Pending in Phase 3
+
+Email integration (Gmail/Outlook OAuth, sequences), demand matching, WhatsApp outbound send, e-signature vendor integration, Google Chat webhook.
+
 ## Testing & security posture
 
 - **Unit tests + CI**: vitest suite (`npm test` — phone normalization, CSV parser, brochure layout sanitizer, PDF/flyer renderers) and a GitHub Actions workflow (lint, typecheck, test, build) run on every push/PR.

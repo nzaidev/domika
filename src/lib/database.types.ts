@@ -413,6 +413,42 @@ export type BrochureRow = {
   updated_at: string;
 };
 
+export type DocumentStatus = "draft" | "generated" | "sent" | "signed" | "void";
+export type SignatureStatus =
+  | "not_required"
+  | "pending"
+  | "signed"
+  | "declined"
+  | "expired";
+
+export type ContractTemplateRow = {
+  id: string;
+  organization_id: string;
+  name: string;
+  contract_type: string;
+  body: string;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ContractRow = {
+  id: string;
+  organization_id: string;
+  lead_id: string | null;
+  property_id: string | null;
+  template_id: string | null;
+  created_by: string | null;
+  status: DocumentStatus;
+  signature_status: SignatureStatus;
+  title: string;
+  variables: Json;
+  storage_path: string | null;
+  signature_external_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type AuditLogRow = {
   id: string;
   organization_id: string | null;
@@ -457,6 +493,8 @@ export type Database = {
       audit_log: Table<AuditLogRow>;
       brochure_templates: Table<BrochureTemplateRow>;
       brochures: Table<BrochureRow>;
+      contract_templates: Table<ContractTemplateRow>;
+      contracts: Table<ContractRow>;
     };
     Views: {
       properties_network_safe: {

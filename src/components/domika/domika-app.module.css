@@ -1443,3 +1443,33 @@ a.propertyCard:hover {
   grid-template-columns: 88px minmax(0, 1fr) auto;
   padding: 8px;
 }
+
+.bellLink {
+  align-items: center;
+  border: 1px solid var(--app-soft);
+  border-radius: 8px;
+  display: flex;
+  font-size: 16px;
+  height: 38px;
+  justify-content: center;
+  position: relative;
+  text-decoration: none;
+  width: 38px;
+}
+
+.bellBadge {
+  background: var(--app-coral);
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 3px 5px;
+  position: absolute;
+  right: -5px;
+  top: -5px;
+}
+
+.notificationUnread {
+  border-left: 3px solid var(--app-green);
+}
