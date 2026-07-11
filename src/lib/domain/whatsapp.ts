@@ -1,8 +1,81 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
+import type { Json } from "@/lib/database.types";
 import { normalizePhone } from "@/lib/phone";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { runAutomationRules } from "@/lib/domain/automation";
+import { hasR2Config, r2Upload } from "@/lib/storage/r2";
+import { mediaUrl } from "@/lib/media";
+
+const GRAPH_API_BASE = "https://graph.facebook.com/v21.0";
+const MAX_MEDIA_BYTES = 25 * 1024 * 1024;
+
+const MEDIA_EXTENSIONS: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "video/mp4": "mp4",
+  "audio/ogg": "ogg",
+  "audio/mpeg": "mp3",
+  "audio/mp4": "m4a",
+  "application/pdf": "pdf",
+};
+
+// Inbound attachments arrive as Meta media IDs; the binary must be pulled
+// from the Graph API with the account's access token (media URLs expire in
+// minutes) and re-hosted in our own storage.
+async function downloadInboundMedia(input: {
+  mediaId: string;
+  accessToken: string;
+  organizationId: string;
+  threadKey: string;
+}): Promise<{ storagePath: string; mimeType: string } | null> {
+  try {
+    const meta = await fetch(`${GRAPH_API_BASE}/${input.mediaId}`, {
+      headers: { authorization: `Bearer ${input.accessToken}` },
+      cache: "no-store",
+    });
+
+    if (!meta.ok) {
+      return null;
+    }
+
+    const info = (await meta.json()) as {
+      url?: string;
+      mime_type?: string;
+      file_size?: number;
+    };
+
+    if (!info.url || (info.file_size ?? 0) > MAX_MEDIA_BYTES) {
+      return null;
+    }
+
+    const file = await fetch(info.url, {
+      headers: { authorization: `Bearer ${input.accessToken}` },
+      cache: "no-store",
+    });
+
+    if (!file.ok) {
+      return null;
+    }
+
+    const mimeType = info.mime_type ?? file.headers.get("content-type") ?? "application/octet-stream";
+    const extension = MEDIA_EXTENSIONS[mimeType.split(";")[0]] ?? "bin";
+    const storagePath = `${input.organizationId}/whatsapp/${input.threadKey}/${randomUUID()}.${extension}`;
+    const body = Buffer.from(await file.arrayBuffer());
+
+    const upload = await r2Upload(storagePath, body, mimeType);
+
+    if (upload.ok === false) {
+      return null;
+    }
+
+    return { storagePath, mimeType };
+  } catch {
+    return null;
+  }
+}
 
 // Shapes from the Meta Cloud API webhook payload (WhatsApp Business Platform).
 export type MetaWebhookMessage = {
@@ -64,9 +137,37 @@ function messageBody(message: MetaWebhookMessage): string | null {
   }
 }
 
-function messageMedia(message: MetaWebhookMessage) {
-  const media = message.image ?? message.video ?? message.audio ?? message.document;
-  return media ? [{ type: message.type, ...media }] : [];
+async function messageMedia(
+  message: MetaWebhookMessage,
+  context: { organizationId: string; accessToken: string | null },
+) {
+  const media =
+    message.image ?? message.video ?? message.audio ?? message.document;
+
+  if (!media) {
+    return [];
+  }
+
+  const entry: Record<string, unknown> = { type: message.type, ...media };
+
+  // Re-host the binary when the account has a token; otherwise keep only
+  // the metadata (Meta media URLs expire within minutes).
+  if (context.accessToken && hasR2Config() && media.id) {
+    const downloaded = await downloadInboundMedia({
+      mediaId: media.id,
+      accessToken: context.accessToken,
+      organizationId: context.organizationId,
+      threadKey: normalizePhone(message.from)?.replace("+", "") ?? "unknown",
+    });
+
+    if (downloaded) {
+      entry.storage_path = downloaded.storagePath;
+      entry.url = mediaUrl(downloaded.storagePath);
+      entry.mime_type = downloaded.mimeType;
+    }
+  }
+
+  return [entry];
 }
 
 export async function ingestWhatsappWebhook(
@@ -101,7 +202,7 @@ export async function ingestWhatsappWebhook(
 
       const { data: account } = await supabase
         .from("whatsapp_accounts")
-        .select("organization_id")
+        .select("organization_id, access_token")
         .eq("phone_number_id", phoneNumberId)
         .eq("active", true)
         .maybeSingle();
@@ -123,6 +224,7 @@ export async function ingestWhatsappWebhook(
           organizationId,
           message,
           contactName: contactNames.get(message.from) ?? null,
+          accessToken: account.access_token,
         });
 
         if (stored === "stored") {
@@ -148,6 +250,7 @@ async function ingestMessage(
     organizationId: string;
     message: MetaWebhookMessage;
     contactName: string | null;
+    accessToken: string | null;
   },
 ): Promise<IngestOutcome> {
   const { organizationId, message, contactName } = input;
@@ -274,7 +377,10 @@ async function ingestMessage(
     external_message_id: message.id,
     direction: "inbound",
     body: messageBody(message),
-    media: messageMedia(message),
+    media: (await messageMedia(message, {
+      organizationId,
+      accessToken: input.accessToken,
+    })) as Json,
     sent_at: sentAt,
   });
 

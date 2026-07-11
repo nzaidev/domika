@@ -55,6 +55,21 @@ export async function revokeShareAction(formData: FormData) {
   }
 }
 
+export async function setPublicLinkAction(formData: FormData) {
+  const propertyId = String(formData.get("propertyId") ?? "");
+  const publish = formData.get("publish") === "true";
+
+  if (propertyId) {
+    await setNetworkPublication({
+      propertyId,
+      publish,
+      channel: "public_link",
+    });
+    revalidatePath(`/properties/${propertyId}`);
+    revalidatePath("/listings");
+  }
+}
+
 export async function setNetworkPublicationAction(formData: FormData) {
   const propertyId = String(formData.get("propertyId") ?? "");
   const publish = formData.get("publish") === "true";

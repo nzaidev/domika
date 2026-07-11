@@ -87,6 +87,70 @@ export async function pipelineAction(
   return { error: null };
 }
 
+export type IntegrationFormState = {
+  error: string | null;
+  saved: boolean;
+};
+
+export async function whatsappAccountAction(
+  _previousState: IntegrationFormState,
+  formData: FormData,
+): Promise<IntegrationFormState> {
+  const { upsertWhatsappAccount } = await import("@/lib/domain/integrations");
+  const result = await upsertWhatsappAccount({
+    phoneNumberId: String(formData.get("phoneNumberId") ?? ""),
+    displayPhoneNumber: String(formData.get("displayPhoneNumber") ?? ""),
+    wabaId: String(formData.get("wabaId") ?? ""),
+    accessToken: String(formData.get("accessToken") ?? ""),
+  });
+
+  if (result.ok === false) {
+    return { error: result.error, saved: false };
+  }
+
+  revalidatePath("/settings");
+  return { error: null, saved: true };
+}
+
+export async function metaPageAction(
+  _previousState: IntegrationFormState,
+  formData: FormData,
+): Promise<IntegrationFormState> {
+  const { upsertMetaLeadPage } = await import("@/lib/domain/integrations");
+  const result = await upsertMetaLeadPage({
+    pageId: String(formData.get("pageId") ?? ""),
+    pageName: String(formData.get("pageName") ?? ""),
+    accessToken: String(formData.get("accessToken") ?? ""),
+  });
+
+  if (result.ok === false) {
+    return { error: result.error, saved: false };
+  }
+
+  revalidatePath("/settings");
+  return { error: null, saved: true };
+}
+
+export async function deleteWhatsappAccountAction(formData: FormData) {
+  const { deleteWhatsappAccount } = await import("@/lib/domain/integrations");
+  const accountId = String(formData.get("accountId") ?? "");
+
+  if (accountId) {
+    await deleteWhatsappAccount(accountId);
+    revalidatePath("/settings");
+  }
+}
+
+export async function deleteMetaPageAction(formData: FormData) {
+  const { deleteMetaLeadPage } = await import("@/lib/domain/integrations");
+  const pageId = String(formData.get("pageId") ?? "");
+
+  if (pageId) {
+    await deleteMetaLeadPage(pageId);
+    revalidatePath("/settings");
+  }
+}
+
 export async function revokeInvitationAction(formData: FormData) {
   const invitationId = String(formData.get("invitationId") ?? "");
 

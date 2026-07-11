@@ -453,7 +453,9 @@ export async function revokeShare(shareId: string): Promise<ShareResult> {
 export async function setNetworkPublication(input: {
   propertyId: string;
   publish: boolean;
+  channel?: "domika_network" | "public_link";
 }): Promise<ShareResult> {
+  const channel = input.channel ?? "domika_network";
   const session = await getSessionProfile();
 
   if (session.status !== "authenticated") {
@@ -479,7 +481,7 @@ export async function setNetworkPublication(input: {
     .select("id, public_slug")
     .eq("organization_id", organizationId)
     .eq("property_id", input.propertyId)
-    .eq("channel", "domika_network")
+    .eq("channel", channel)
     .maybeSingle();
 
   if (input.publish) {
@@ -506,7 +508,7 @@ export async function setNetworkPublication(input: {
       : await supabase.from("listing_publications").insert({
           organization_id: organizationId,
           property_id: input.propertyId,
-          channel: "domika_network",
+          channel,
           status: "published",
           public_slug: slug,
           published_by: session.profile.id,
@@ -540,6 +542,8 @@ export async function setNetworkPublication(input: {
 export type CollaborationState = {
   isPublished: boolean;
   publicSlug: string | null;
+  publicLinkActive: boolean;
+  publicLinkSlug: string | null;
   shares: OutgoingShare[];
 };
 
@@ -549,20 +553,25 @@ export async function getPropertyCollaboration(
   const session = await getSessionProfile();
 
   if (session.status !== "authenticated") {
-    return { isPublished: false, publicSlug: null, shares: [] };
+    return {
+      isPublished: false,
+      publicSlug: null,
+      publicLinkActive: false,
+      publicLinkSlug: null,
+      shares: [],
+    };
   }
 
   const organizationId = session.profile.organization_id;
   const supabase = createAdminSupabaseClient();
 
-  const [publication, shares, organizations, profiles] = await Promise.all([
+  const [publications, shares, organizations, profiles] = await Promise.all([
     supabase
       .from("listing_publications")
-      .select("status, public_slug")
+      .select("channel, status, public_slug")
       .eq("organization_id", organizationId)
       .eq("property_id", propertyId)
-      .eq("channel", "domika_network")
-      .maybeSingle(),
+      .in("channel", ["domika_network", "public_link"]),
     supabase
       .from("property_shares")
       .select("*")
@@ -607,8 +616,18 @@ export async function getPropertyCollaboration(
   }
 
   return {
-    isPublished: publication.data?.status === "published",
-    publicSlug: publication.data?.public_slug ?? null,
+    isPublished:
+      (publications.data ?? []).find((pub) => pub.channel === "domika_network")
+        ?.status === "published",
+    publicSlug:
+      (publications.data ?? []).find((pub) => pub.channel === "domika_network")
+        ?.public_slug ?? null,
+    publicLinkActive:
+      (publications.data ?? []).find((pub) => pub.channel === "public_link")
+        ?.status === "published",
+    publicLinkSlug:
+      (publications.data ?? []).find((pub) => pub.channel === "public_link")
+        ?.public_slug ?? null,
     shares: shareRows.map((share) => {
       let recipientLabel = "—";
       if (share.shared_with_profile_id) {
@@ -738,6 +757,80 @@ export async function getSharedPropertyView(
     property,
     permission: share.permission,
     sharedByOrganization: owner?.name ?? "Organización",
+    media: (media ?? []).map((item) => ({
+      id: item.id,
+      url: mediaUrl(item.storage_path),
+      alt: item.alt_text ?? property.title,
+    })),
+  };
+}
+
+export type PublicListingView =
+  | { status: "not_found" }
+  | {
+      status: "ready";
+      property: SafeProperty;
+      organizationName: string;
+      brandColor: string;
+      media: Array<{ id: string; url: string; alt: string }>;
+    };
+
+// Consumer-facing view: NO session required (this is the shareable page).
+// Reads through the owner-safe view; records an anonymous engagement event.
+export async function getPublicListingView(
+  slug: string,
+): Promise<PublicListingView> {
+  const supabase = createAdminSupabaseClient();
+  const { data: publication } = await supabase
+    .from("listing_publications")
+    .select("*")
+    .eq("public_slug", slug)
+    .eq("channel", "public_link")
+    .eq("status", "published")
+    .maybeSingle();
+
+  if (!publication) {
+    return { status: "not_found" };
+  }
+
+  const [{ data: safeRow }, { data: owner }, { data: media }] =
+    await Promise.all([
+      supabase
+        .from("properties_network_safe")
+        .select("*")
+        .eq("id", publication.property_id)
+        .maybeSingle(),
+      supabase
+        .from("organizations")
+        .select("name, brand_color")
+        .eq("id", publication.organization_id)
+        .maybeSingle(),
+      supabase
+        .from("property_media")
+        .select("id, storage_path, alt_text, position")
+        .eq("property_id", publication.property_id)
+        .order("position", { ascending: true }),
+    ]);
+
+  if (!safeRow) {
+    return { status: "not_found" };
+  }
+
+  await supabase.from("listing_engagement_events").insert({
+    organization_id: publication.organization_id,
+    listing_publication_id: publication.id,
+    property_id: publication.property_id,
+    event_type: "view",
+    source: "public_link",
+  });
+
+  const property = toSafeProperty(safeRow);
+
+  return {
+    status: "ready",
+    property,
+    organizationName: owner?.name ?? "Domika",
+    brandColor: owner?.brand_color ?? "#0B1B3A",
     media: (media ?? []).map((item) => ({
       id: item.id,
       url: mediaUrl(item.storage_path),

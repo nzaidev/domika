@@ -4,6 +4,8 @@ import styles from "@/components/domika/domika-app.module.css";
 import type { AppRole } from "@/lib/database.types";
 import { getTeamOverview } from "@/lib/domain/invitations";
 import { getPipelineStages } from "@/lib/domain/pipeline";
+import { getIntegrationsState } from "@/lib/domain/integrations";
+import { MetaPagesPanel, WhatsappPanel } from "./IntegrationsPanel";
 import { revokeInvitationAction } from "./actions";
 import { CopyInviteLinkButton } from "./CopyInviteLinkButton";
 import { InviteForm } from "./InviteForm";
@@ -16,29 +18,6 @@ const ROLE_LABELS: Record<AppRole, string> = {
   admin: "Administrador",
   agent: "Agente",
 };
-
-const integrations = [
-  {
-    title: "WhatsApp Business",
-    description: "Captura automática de contactos, mensajes y origen de campaña.",
-    status: "Pendiente",
-  },
-  {
-    title: "Clerk",
-    description: "Autenticación, sesiones y perfiles conectados por ID de usuario.",
-    status: "Activo",
-  },
-  {
-    title: "Supabase",
-    description: "Base de datos, almacenamiento y consultas por organización.",
-    status: "Activo",
-  },
-  {
-    title: "Portales inmobiliarios",
-    description: "Feeds de publicación y sincronización de inventario.",
-    status: "Próximo",
-  },
-];
 
 export default async function SettingsPage() {
   const team = await getTeamOverview();
@@ -65,7 +44,10 @@ export default async function SettingsPage() {
   }
 
   const canManageTeam = team.profile.role !== "agent";
-  const stages = await getPipelineStages();
+  const [stages, integrations] = await Promise.all([
+    getPipelineStages(),
+    getIntegrationsState(),
+  ]);
 
   return (
     <div className={styles.page}>
@@ -179,19 +161,37 @@ export default async function SettingsPage() {
         )}
       </section>
 
-      <section className={styles.threeGrid}>
-        {integrations.map((setting) => (
-          <article className={styles.panel} key={setting.title}>
+      {canManageTeam ? (
+        <div className={styles.splitGrid}>
+          <section className={styles.panel}>
             <div className={styles.sectionHeader}>
               <div>
-                <span className={styles.eyebrow}>{setting.status}</span>
-                <h2>{setting.title}</h2>
+                <span className={styles.eyebrow}>Integración</span>
+                <h2>WhatsApp Business</h2>
               </div>
+              <span className={styles.pill}>
+                {integrations.whatsappAccounts.length > 0
+                  ? "Conectado"
+                  : "Sin conectar"}
+              </span>
             </div>
-            <p className={styles.mutedText}>{setting.description}</p>
-          </article>
-        ))}
-      </section>
+            <WhatsappPanel accounts={integrations.whatsappAccounts} />
+          </section>
+
+          <section className={styles.panel}>
+            <div className={styles.sectionHeader}>
+              <div>
+                <span className={styles.eyebrow}>Integración</span>
+                <h2>Meta Lead Ads</h2>
+              </div>
+              <span className={styles.pill}>
+                {integrations.metaPages.length > 0 ? "Conectado" : "Sin conectar"}
+              </span>
+            </div>
+            <MetaPagesPanel pages={integrations.metaPages} />
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }

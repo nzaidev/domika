@@ -121,19 +121,55 @@ export default async function LeadDetailPage({
             </div>
             {messages.length > 0 ? (
               <div className={styles.chatList}>
-                {messages.map((message) => (
-                  <div
-                    className={`${styles.chatBubble} ${
-                      message.direction === "inbound"
-                        ? styles.chatInbound
-                        : styles.chatOutbound
-                    }`}
-                    key={message.id}
-                  >
-                    <p>{message.body}</p>
-                    <time>{formatDateTime(message.sent_at)}</time>
-                  </div>
-                ))}
+                {messages.map((message) => {
+                  const attachments = Array.isArray(message.media)
+                    ? (message.media as Array<Record<string, unknown>>).filter(
+                        (item) => typeof item.url === "string",
+                      )
+                    : [];
+
+                  return (
+                    <div
+                      className={`${styles.chatBubble} ${
+                        message.direction === "inbound"
+                          ? styles.chatInbound
+                          : styles.chatOutbound
+                      }`}
+                      key={message.id}
+                    >
+                      {attachments.map((item) =>
+                        String(item.mime_type ?? "").startsWith("image/") ? (
+                          <a
+                            href={item.url as string}
+                            target="_blank"
+                            rel="noreferrer"
+                            key={item.url as string}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element -- re-hosted whatsapp attachment */}
+                            <img
+                              src={item.url as string}
+                              alt="Adjunto de WhatsApp"
+                              className={styles.chatImage}
+                              loading="lazy"
+                            />
+                          </a>
+                        ) : (
+                          <a
+                            href={item.url as string}
+                            target="_blank"
+                            rel="noreferrer"
+                            key={item.url as string}
+                            className={styles.chatAttachment}
+                          >
+                            📎 {String(item.filename ?? "Adjunto")}
+                          </a>
+                        ),
+                      )}
+                      <p>{message.body}</p>
+                      <time>{formatDateTime(message.sent_at)}</time>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <p className={styles.mutedText}>

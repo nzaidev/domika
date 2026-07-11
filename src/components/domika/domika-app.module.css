@@ -853,14 +853,41 @@
     grid-template-columns: 1fr;
   }
 
+  /* Sidebar becomes a sticky horizontal nav strip — agents are phone-first
+     and must always be able to navigate. */
   .sidebar {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    min-height: 0;
+    overflow-x: auto;
+    padding: 10px 12px;
+    z-index: 30;
+  }
+
+  .sidebar .brand {
+    display: none;
+  }
+
+  .navStack {
+    display: flex;
+    flex-direction: row;
+    gap: 6px;
+  }
+
+  .navLink {
+    white-space: nowrap;
+  }
+
+  .sidebarFoot {
     display: none;
   }
 
   .contentGrid,
   .pipelineGrid,
   .exchangeGrid,
-  .splitGrid {
+  .splitGrid,
+  .leadsGrid {
     grid-template-columns: 1fr;
   }
 
@@ -926,6 +953,70 @@
   .taskCard {
     align-items: start;
     grid-template-columns: 12px minmax(0, 1fr);
+  }
+
+  /* Kanban: horizontal swipe with readable columns. */
+  .stageGrid {
+    display: flex;
+    gap: 10px;
+  }
+
+  .stageGrid .stage {
+    flex: 0 0 240px;
+  }
+
+  .topActions {
+    flex-wrap: wrap;
+  }
+
+  .searchBox {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .filterBar input[type="search"],
+  .filterBar select {
+    width: 100%;
+  }
+
+  .filterBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .publicationRow,
+  .photoRow {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  .publicationRow form,
+  .photoRow .stageEditActions {
+    grid-column: 1 / -1;
+  }
+
+  .photoThumb {
+    width: 64px;
+  }
+
+  .inviteRowActions,
+  .stageEditActions {
+    flex-wrap: wrap;
+  }
+
+  .chatBubble {
+    max-width: 95%;
+  }
+
+  .stageEditRow {
+    grid-template-columns: 1fr;
+  }
+
+  .onboardingPanel {
+    padding: 18px;
+  }
+
+  .galleryGrid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   }
 
   .meshCanvas {
@@ -1478,4 +1569,87 @@ a.propertyCard:hover {
   background: var(--app-mint);
   color: var(--app-green-deep);
   font-weight: 700;
+}
+
+.chatImage {
+  border-radius: 8px;
+  max-height: 260px;
+  max-width: 100%;
+  object-fit: cover;
+}
+
+.chatAttachment {
+  color: var(--app-green-deep);
+  text-decoration: none;
+}
+
+.chatAttachment:hover {
+  text-decoration: underline;
+}
+
+.shareRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.publicShell {
+  --app-bg: #f6f8f5;
+  --app-panel: #ffffff;
+  --app-panel-strong: #edf8f3;
+  --app-ink: #203331;
+  --app-muted: #657470;
+  --app-soft: #dbe7e1;
+  --app-deep: #04383b;
+  --app-green: #00c895;
+  --app-green-deep: #049474;
+  --app-mint: #c9f6e5;
+  --app-coral: #e66856;
+  --app-coral-soft: #fff0ed;
+  background: var(--app-bg);
+  color: var(--app-ink);
+  display: grid;
+  gap: 18px;
+  min-height: 100vh;
+}
+
+.publicHeader {
+  align-items: center;
+  background: var(--app-deep);
+  color: #ffffff;
+  display: flex;
+  justify-content: space-between;
+  padding: 16px 20px;
+}
+
+.publicMain {
+  display: grid;
+  gap: 16px;
+  margin: 0 auto;
+  max-width: 860px;
+  padding: 0 20px 20px;
+  width: 100%;
+}
+
+.publicMain h1 {
+  font-size: 30px;
+  margin: 0;
+}
+
+.publicMain h2 {
+  font-size: 18px;
+  margin: 0 0 10px;
+}
+
+.publicPrice {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.publicFooter {
+  color: var(--app-muted);
+  font-size: 13px;
+  padding: 18px 20px;
+  text-align: center;
 }

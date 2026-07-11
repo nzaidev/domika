@@ -8,6 +8,10 @@ const isPublicRoute = createRouteMatcher([
   "/sign-up(.*)",
   "/api/webhooks(.*)",
   "/api/cron(.*)",
+  // Consumer-facing shared listings (owner data excluded at the DB level)
+  // and their images — social crawlers must be able to read them.
+  "/p(.*)",
+  "/api/media(.*)",
 ]);
 
 export const proxy = clerkMiddleware(async (auth, request) => {

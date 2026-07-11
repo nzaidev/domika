@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { PageHeader } from "@/components/domika/AppWidgets";
 import styles from "@/components/domika/domika-app.module.css";
@@ -13,6 +14,7 @@ import {
   setNetworkPublicationAction,
 } from "@/app/(app)/network/actions";
 import { SharePanel } from "./SharePanel";
+import { PublicLinkPanel } from "./PublicLinkPanel";
 import {
   formatPrice,
   OPERATION_LABELS,
@@ -53,10 +55,17 @@ export default async function PropertyDetailPage({
   }
 
   const { property, media } = detail;
-  const [collaboration, directory] = await Promise.all([
+  const [collaboration, directory, headerList] = await Promise.all([
     getPropertyCollaboration(property.id),
     getShareDirectory(),
+    headers(),
   ]);
+
+  const host = headerList.get("host") ?? "domika.io";
+  const protocol = headerList.get("x-forwarded-proto") ?? "https";
+  const publicUrl = collaboration.publicLinkSlug
+    ? `${protocol}://${host}/p/${collaboration.publicLinkSlug}`
+    : null;
 
   const specs = [
     { label: "Tipo", value: property.property_type },
@@ -185,6 +194,15 @@ export default async function PropertyDetailPage({
               </div>
             </section>
           ) : null}
+
+          <section className={styles.panel}>
+            <PublicLinkPanel
+              propertyId={property.id}
+              propertyTitle={property.title}
+              active={collaboration.publicLinkActive}
+              publicUrl={publicUrl}
+            />
+          </section>
 
           <section className={styles.panel}>
             <div className={styles.sectionHeader}>

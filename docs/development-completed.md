@@ -297,9 +297,27 @@ Buyer requirements auto-match against your inventory **and** other orgs' Domika-
 4. Lead-linked requirements log to the lead's timeline; "Archivar" retires a requirement.
 5. Scorer edge cases are unit-tested (9 cases: tolerance, normalization, accents, disqualification).
 
+### 19. Self-service Meta integrations + WhatsApp media ✅
+
+**Test — connect WhatsApp without SQL:** `/settings` (owner/admin) → "WhatsApp Business" panel → enter the `phone_number_id` (numeric ID from Meta → WhatsApp → API Setup), visible phone, optional WABA ID and access token → save. The token is write-only (never displayed; leave blank on edit to keep it). Same pattern for "Meta Lead Ads" (page_id + page token). Numbers/pages already connected to another org are rejected.
+
+**Inbound media:** with a token saved, incoming WhatsApp photos/documents/audio are downloaded from the Graph API, re-hosted in R2, and render in the lead's conversation (images inline, documents as 📎 links). Without a token, messages still arrive with a media placeholder.
+
+### 20. Public listing pages + social sharing ✅
+
+**Test:**
+1. Property detail → "Página pública" → "Crear enlace público" → a consumer-facing page appears at `domika.io/p/{slug}`: gallery with zoom, price, specs, amenities, org branding — **no owner data, no address** (DB-level exclusion), no login required. Each visit records an anonymous view in engagement events.
+2. Share buttons appear: **WhatsApp**, **Facebook**, **LinkedIn**, and copy-link (Instagram has no web-share endpoint — use copy link). Shares carry OpenGraph tags (title, price/location description, cover photo), so previews render rich cards.
+3. "Desactivar enlace público" → the page 404s immediately.
+4. `/listings` (Promoción) counts the "Enlace público" channel with its views.
+
+### 21. Mobile pass ✅
+
+The app now works phone-first: below 1180px the sidebar becomes a sticky horizontal nav strip (previously navigation disappeared entirely on mobile); below 820px the kanban becomes horizontally swipeable with fixed-width columns, filter bars stack, photo/publication rows reflow, chat bubbles widen, and forms go single-column. **Test:** open any page at ~390px width — every tab must be reachable and every form usable.
+
 ### Pending in Phase 3
 
-Email integration (Gmail/Outlook OAuth, sequences), WhatsApp outbound send (incl. match cards por WhatsApp), e-signature vendor integration, Google Chat webhook.
+Email integration (Gmail/Outlook OAuth, sequences), WhatsApp outbound send (incl. match cards por WhatsApp), e-signature vendor integration, Google Chat webhook. Token storage note: Meta access tokens are stored in the DB (server-only access); at-rest encryption is a pre-launch hardening item.
 
 ## Testing & security posture
 
