@@ -98,23 +98,29 @@ export async function renderBrochurePdf(
   });
   y = PAGE_HEIGHT - 80;
 
-  // Cover photo.
+  // Cover photo. embedJpg is strict about JPEG variants (progressive,
+  // CMYK, unusual markers) and can throw; a bad cover must never fail the
+  // whole document, so skip it on error.
   if (sections.includes("cover") && data.coverJpeg) {
-    const image = await doc.embedJpg(data.coverJpeg);
-    const maxHeight = 260;
-    const scale = Math.min(
-      CONTENT_WIDTH / image.width,
-      maxHeight / image.height,
-    );
-    const width = image.width * scale;
-    const height = image.height * scale;
-    page.drawImage(image, {
-      x: MARGIN + (CONTENT_WIDTH - width) / 2,
-      y: y - height,
-      width,
-      height,
-    });
-    y -= height + 18;
+    try {
+      const image = await doc.embedJpg(data.coverJpeg);
+      const maxHeight = 260;
+      const scale = Math.min(
+        CONTENT_WIDTH / image.width,
+        maxHeight / image.height,
+      );
+      const width = image.width * scale;
+      const height = image.height * scale;
+      page.drawImage(image, {
+        x: MARGIN + (CONTENT_WIDTH - width) / 2,
+        y: y - height,
+        width,
+        height,
+      });
+      y -= height + 18;
+    } catch (error) {
+      console.error("[brochure-pdf] cover embed skipped:", error);
+    }
   }
 
   // Title + location.

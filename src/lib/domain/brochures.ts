@@ -75,8 +75,18 @@ async function buildBrochureData(
     }
 
     if (bytes) {
-      // Stored photos are WebP; pdf-lib needs JPEG.
-      coverJpeg = await sharp(Buffer.from(bytes)).jpeg({ quality: 85 }).toBuffer();
+      // Stored photos are WebP; normalize to a baseline sRGB JPEG with no
+      // alpha — the variant pdf-lib's embedJpg reliably accepts (progressive
+      // / CMYK / alpha JPEGs make it throw).
+      try {
+        coverJpeg = await sharp(Buffer.from(bytes))
+          .flatten({ background: "#ffffff" })
+          .toColourspace("srgb")
+          .jpeg({ quality: 85, progressive: false, mozjpeg: false })
+          .toBuffer();
+      } catch (error) {
+        console.error("[brochures] cover normalize failed:", error);
+      }
     }
   }
 
@@ -171,8 +181,14 @@ export async function generateBrochure(input: {
       contentType = "application/pdf";
     }
   } catch (error) {
-    console.error("[brochures] render failed:", error);
-    return { ok: false, error: "No se pudo generar el documento." };
+    console.error(
+      `[brochures] render failed (format=${layout.format}, property=${input.propertyId}):`,
+      error,
+    );
+    return {
+      ok: false,
+      error: `No se pudo generar el ${layout.format === "flyer" ? "flyer" : "folleto"}. Intenta de nuevo o revisa las fotos de la propiedad.`,
+    };
   }
 
   const storagePath = `${organizationId}/brochures/${input.propertyId}/${randomUUID()}.${extension}`;
