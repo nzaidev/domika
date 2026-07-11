@@ -1,20 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import {
-  CampaignChannels,
-  LifecycleBoard,
-  MetricGrid,
-  PageHeader,
-  TaskList,
-  WhatsAppInbox,
-} from "@/components/domika/AppWidgets";
+import { MetricGrid, PageHeader } from "@/components/domika/AppWidgets";
 import styles from "@/components/domika/domika-app.module.css";
-import {
-  campaignChannels,
-  lifecycleColumns,
-  tasks,
-  whatsappInbox,
-} from "@/lib/domika-app-data";
 import { getDashboardOverview } from "@/lib/domain/dashboard";
 import {
   formatPrice,
@@ -105,10 +92,107 @@ export default async function DashboardPage() {
       <MetricGrid metrics={metrics} />
 
       <div className={styles.contentGrid}>
-        <LifecycleBoard columns={lifecycleColumns} />
+        <section className={styles.lifecycle}>
+          <div className={styles.sectionHeader}>
+            <div>
+              <span className={styles.eyebrow}>Ciclo de vida del prospecto</span>
+              <h2>Embudo por etapa</h2>
+            </div>
+            <Link className={styles.secondaryButton} href="/leads">
+              Abrir embudo
+            </Link>
+          </div>
+          <div className={styles.stageGrid}>
+            {overview.stages.map((stage) => (
+              <article className={styles.stage} key={stage.id}>
+                <div className={styles.stageHead}>
+                  <strong>{stage.name}</strong>
+                  <span>{stage.count}</span>
+                </div>
+                <div className={styles.leadStack}>
+                  {stage.leads.map((lead) => (
+                    <Link
+                      className={styles.leadCard}
+                      href={`/leads/${lead.id}`}
+                      key={lead.id}
+                    >
+                      <strong>{lead.name}</strong>
+                      <small>{lead.subtitle}</small>
+                    </Link>
+                  ))}
+                  {stage.count === 0 ? (
+                    <p className={styles.mutedText}>Sin prospectos</p>
+                  ) : null}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
         <div className={styles.leadStack}>
-          <WhatsAppInbox messages={whatsappInbox} />
-          <CampaignChannels channels={campaignChannels.slice(0, 3)} />
+          <section className={styles.panel}>
+            <div className={styles.sectionHeader}>
+              <div>
+                <span className={styles.eyebrow}>Captura de contactos</span>
+                <h2>Bandeja de WhatsApp</h2>
+              </div>
+            </div>
+            {overview.inbox.length > 0 ? (
+              <div className={styles.messageList}>
+                {overview.inbox.map((thread) => (
+                  <Link
+                    className={styles.messageRow}
+                    href={thread.leadId ? `/leads/${thread.leadId}` : "/leads"}
+                    key={thread.id}
+                    style={{ textDecoration: "none", color: "inherit" }}
+                  >
+                    <div className={styles.avatar}>
+                      {thread.name.slice(0, 1).toUpperCase()}
+                    </div>
+                    <div>
+                      <strong>{thread.name}</strong>
+                      <span>{thread.snippet.slice(0, 60)}</span>
+                    </div>
+                    <time className={styles.mutedText}>
+                      {thread.time
+                        ? new Date(thread.time).toLocaleDateString("es", {
+                            day: "numeric",
+                            month: "short",
+                          })
+                        : ""}
+                    </time>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className={styles.mutedText}>
+                Cuando lleguen mensajes de WhatsApp, aparecerán aquí.
+              </p>
+            )}
+          </section>
+
+          <section className={styles.panel}>
+            <div className={styles.sectionHeader}>
+              <div>
+                <span className={styles.eyebrow}>Origen</span>
+                <h2>Canales de captación</h2>
+              </div>
+            </div>
+            {overview.leadSources.length > 0 ? (
+              <div className={styles.channelList}>
+                {overview.leadSources.slice(0, 4).map((source) => (
+                  <article className={styles.channelRow} key={source.source}>
+                    <strong>{source.label}</strong>
+                    <span>
+                      {source.count} prospecto{source.count === 1 ? "" : "s"}
+                    </span>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className={styles.mutedText}>Sin prospectos todavía.</p>
+            )}
+          </section>
         </div>
       </div>
 
@@ -183,7 +267,32 @@ export default async function DashboardPage() {
               Ver agenda
             </Link>
           </div>
-          <TaskList items={tasks.slice(0, 4)} />
+          {overview.upcomingTasks.length > 0 ? (
+            <div className={styles.taskList}>
+              {overview.upcomingTasks.map((task) => (
+                <Link
+                  className={styles.taskCard}
+                  href={task.leadId ? `/leads/${task.leadId}` : "/tasks"}
+                  key={task.id}
+                  style={{ textDecoration: "none", color: "inherit" }}
+                >
+                  <strong>{task.title}</strong>
+                  <span className={styles.mutedText}>
+                    {task.dueAt
+                      ? new Date(task.dueAt).toLocaleString("es", {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        })
+                      : "Sin fecha"}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className={styles.mutedText}>
+              Sin tareas pendientes. <Link href="/tasks">Crea una</Link>.
+            </p>
+          )}
         </section>
       </div>
     </div>

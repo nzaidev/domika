@@ -5,6 +5,7 @@ import type {
   PropertyRow,
 } from "@/lib/database.types";
 import { mediaUrl } from "@/lib/media";
+import { r2Delete } from "@/lib/storage/r2";
 import { normalizePhone } from "@/lib/phone";
 import { getSessionProfile } from "@/lib/auth/session";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -347,6 +348,8 @@ export async function deleteProperty(
   }
 
   if (storagePaths.length > 0) {
+    // R2 is canonical; also try supabase storage for pre-migration objects.
+    await r2Delete(storagePaths);
     await supabase.storage.from("property-media").remove(storagePaths);
   }
 
@@ -484,6 +487,7 @@ export async function deleteMedia(input: {
     return { ok: false, error: error.message };
   }
 
+  await r2Delete([media.storage_path]);
   await supabase.storage.from("property-media").remove([media.storage_path]);
 
   return { ok: true };

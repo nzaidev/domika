@@ -6,6 +6,7 @@ import type { BrochureRow, BrochureTemplateRow } from "@/lib/database.types";
 import { getSessionProfile } from "@/lib/auth/session";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { mediaUrl } from "@/lib/media";
+import { hasR2Config, r2Download, r2Upload } from "@/lib/storage/r2";
 import { renderBrochurePdf } from "@/lib/brochures/pdf";
 import { renderFlyerImage } from "@/lib/brochures/flyer";
 import {
@@ -60,15 +61,22 @@ async function buildBrochureData(
   const cover = (media ?? [])[0];
 
   if (cover) {
-    const { data: file } = await supabase.storage
-      .from("property-media")
-      .download(cover.storage_path);
+    // R2 is canonical; fall back to supabase storage for pre-migration files.
+    let bytes: ArrayBuffer | null = null;
+    const fromR2 = hasR2Config() ? await r2Download(cover.storage_path) : null;
 
-    if (file) {
+    if (fromR2) {
+      bytes = fromR2.body;
+    } else {
+      const { data: file } = await supabase.storage
+        .from("property-media")
+        .download(cover.storage_path);
+      bytes = file ? await file.arrayBuffer() : null;
+    }
+
+    if (bytes) {
       // Stored photos are WebP; pdf-lib needs JPEG.
-      coverJpeg = await sharp(Buffer.from(await file.arrayBuffer()))
-        .jpeg({ quality: 85 })
-        .toBuffer();
+      coverJpeg = await sharp(Buffer.from(bytes)).jpeg({ quality: 85 }).toBuffer();
     }
   }
 
@@ -168,17 +176,19 @@ export async function generateBrochure(input: {
   }
 
   const storagePath = `${organizationId}/brochures/${input.propertyId}/${randomUUID()}.${extension}`;
-  const { error: uploadError } = await supabase.storage
-    .from("property-media")
-    .upload(storagePath, file, { contentType, cacheControl: "3600" });
 
-  if (uploadError) {
-    return { ok: false, error: uploadError.message };
+  if (!hasR2Config()) {
+    return {
+      ok: false,
+      error: "El almacenamiento R2 no está configurado (R2_ACCOUNT_ID / claves).",
+    };
   }
 
-  const { data: publicUrlData } = supabase.storage
-    .from("property-media")
-    .getPublicUrl(storagePath);
+  const upload = await r2Upload(storagePath, file, contentType);
+
+  if (upload.ok === false) {
+    return { ok: false, error: upload.error };
+  }
 
   await supabase.from("brochures").insert({
     organization_id: organizationId,
@@ -188,9 +198,7 @@ export async function generateBrochure(input: {
     title: `${data.title} — ${layout.format === "flyer" ? "Flyer WhatsApp" : "Folleto PDF"}`,
     output_format: layout.format,
     storage_path: storagePath,
-    // public_url kept for external sharing (WhatsApp); the app UI itself
-    // serves through the same-origin /api/media proxy.
-    metadata: { public_url: publicUrlData.publicUrl, layout },
+    metadata: { public_url: mediaUrl(storagePath), layout },
   });
 
   return { ok: true, url: mediaUrl(storagePath), format: layout.format };

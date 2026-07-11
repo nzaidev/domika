@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import { getSessionProfile } from "@/lib/auth/session";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { hasR2Config, r2Delete, r2Upload } from "@/lib/storage/r2";
 import { mediaUrl } from "@/lib/media";
 
 // Property photo upload: validates, normalizes on ingest (EXIF rotation,
@@ -115,21 +116,20 @@ export async function POST(
         .toBuffer();
 
       const storagePath = `${organizationId}/${propertyId}/${randomUUID()}.webp`;
-      const { error: uploadError } = await supabase.storage
-        .from("property-media")
-        .upload(storagePath, processed, {
-          contentType: "image/webp",
-          cacheControl: "31536000",
-        });
 
-      if (uploadError) {
-        errors.push(`${file.name}: ${uploadError.message}`);
+      if (!hasR2Config()) {
+        errors.push(
+          `${file.name}: el almacenamiento R2 no está configurado (R2_ACCOUNT_ID / claves).`,
+        );
         continue;
       }
 
-      const { data: publicUrlData } = supabase.storage
-        .from("property-media")
-        .getPublicUrl(storagePath);
+      const upload = await r2Upload(storagePath, processed, "image/webp");
+
+      if (upload.ok === false) {
+        errors.push(`${file.name}: ${upload.error}`);
+        continue;
+      }
 
       const { data: mediaRow, error: insertError } = await supabase
         .from("property_media")
@@ -137,7 +137,7 @@ export async function POST(
           organization_id: organizationId,
           property_id: propertyId,
           storage_path: storagePath,
-          public_url: publicUrlData.publicUrl,
+          public_url: mediaUrl(storagePath),
           media_type: "image",
           alt_text: file.name.replace(/\.[^.]+$/, ""),
           position,
@@ -148,7 +148,7 @@ export async function POST(
         .single();
 
       if (insertError || !mediaRow) {
-        await supabase.storage.from("property-media").remove([storagePath]);
+        await r2Delete([storagePath]);
         errors.push(`${file.name}: ${insertError?.message ?? "error al registrar"}`);
         continue;
       }

@@ -63,5 +63,6 @@ export async function setNetworkPublicationAction(formData: FormData) {
     await setNetworkPublication({ propertyId, publish });
     revalidatePath(`/properties/${propertyId}`);
     revalidatePath("/network");
+    revalidatePath("/listings");
   }
 }
