@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import styles from "@/components/domika/domika-app.module.css";
 import type { PropertyMediaRow } from "@/lib/database.types";
+import { prepareImageForUpload } from "@/lib/image-client";
 import {
   deleteMediaAction,
   moveMediaAction,
@@ -19,42 +20,64 @@ export function PhotoManager({
 }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
+  const [uploading, setUploading] = useState<string | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   const [, startTransition] = useTransition();
 
   async function handleUpload(files: FileList) {
-    setUploading(true);
     setErrors([]);
+    const list = Array.from(files);
+    const reported: string[] = [];
 
-    const body = new FormData();
-    for (const file of Array.from(files)) {
-      body.append("files", file);
-    }
+    // One request per file: keeps every request small (serverless body
+    // limits) and lets one bad photo fail without blocking the rest.
+    for (let index = 0; index < list.length; index += 1) {
+      setUploading(`Subiendo foto ${index + 1} de ${list.length}…`);
+      const original = list[index];
 
-    try {
-      const response = await fetch(`/api/properties/${propertyId}/media`, {
-        method: "POST",
-        body,
-      });
-      const payload = (await response.json()) as {
-        errors?: string[];
-        error?: string;
-      };
+      try {
+        const prepared = await prepareImageForUpload(original);
+        const body = new FormData();
+        body.append("files", prepared);
 
-      const reported = payload.errors ?? (payload.error ? [payload.error] : []);
-      setErrors(reported);
-      startTransition(() => {
-        router.refresh();
-      });
-    } catch {
-      setErrors(["No se pudieron subir las fotos. Intenta de nuevo."]);
-    } finally {
-      setUploading(false);
-      if (inputRef.current) {
-        inputRef.current.value = "";
+        const response = await fetch(`/api/properties/${propertyId}/media`, {
+          method: "POST",
+          body,
+        });
+
+        if (response.status === 413) {
+          reported.push(
+            `${original.name}: la imagen es demasiado grande para subir.`,
+          );
+          continue;
+        }
+
+        let payload: { errors?: string[]; error?: string } = {};
+        try {
+          payload = await response.json();
+        } catch {
+          if (!response.ok) {
+            reported.push(`${original.name}: error ${response.status} al subir.`);
+            continue;
+          }
+        }
+        reported.push(...(payload.errors ?? []));
+        if (payload.error) {
+          reported.push(payload.error);
+        }
+      } catch {
+        reported.push(`${original.name}: fallo de red al subir.`);
       }
     }
+
+    setErrors(reported);
+    setUploading(null);
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
+    startTransition(() => {
+      router.refresh();
+    });
   }
 
   return (
@@ -70,7 +93,7 @@ export function PhotoManager({
           type="file"
           accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/avif"
           multiple
-          disabled={uploading}
+          disabled={uploading !== null}
           onChange={(event) => {
             if (event.target.files?.length) {
               void handleUpload(event.target.files);
@@ -79,7 +102,7 @@ export function PhotoManager({
         />
       </label>
 
-      {uploading ? <p className={styles.mutedText}>Subiendo fotos…</p> : null}
+      {uploading ? <p className={styles.mutedText}>{uploading}</p> : null}
       {errors.map((error) => (
         <p className={styles.formError} key={error}>
           {error}

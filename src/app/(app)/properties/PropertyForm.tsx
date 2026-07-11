@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
 import styles from "@/components/domika/domika-app.module.css";
 import type { PropertyRow } from "@/lib/database.types";
+import { prepareImageForUpload } from "@/lib/image-client";
 import { savePropertyAction, type PropertyFormState } from "./actions";
 import { StagedPhotos, type StagedPhoto } from "./StagedPhotos";
 
@@ -53,24 +54,40 @@ export function PropertyForm({ property }: { property?: PropertyRow }) {
 
       for (let index = 0; index < staged.length; index += 1) {
         setUploadStatus(`Subiendo foto ${index + 1} de ${staged.length}…`);
-        const body = new FormData();
-        body.append("files", staged[index].file);
+        const original = staged[index].file;
 
         try {
+          const prepared = await prepareImageForUpload(original);
+          const body = new FormData();
+          body.append("files", prepared);
+
           const response = await fetch(
             `/api/properties/${propertyId}/media`,
             { method: "POST", body },
           );
-          const payload = (await response.json()) as {
-            errors?: string[];
-            error?: string;
-          };
+
+          if (response.status === 413) {
+            errors.push(
+              `${original.name}: la imagen es demasiado grande para subir. Reduce su tamaño e inténtalo desde “Editar ficha”.`,
+            );
+            continue;
+          }
+
+          let payload: { errors?: string[]; error?: string } = {};
+          try {
+            payload = await response.json();
+          } catch {
+            if (!response.ok) {
+              errors.push(`${original.name}: error ${response.status} al subir.`);
+              continue;
+            }
+          }
           errors.push(...(payload.errors ?? []));
           if (payload.error) {
             errors.push(payload.error);
           }
         } catch {
-          errors.push(`${staged[index].file.name}: fallo de red al subir.`);
+          errors.push(`${original.name}: fallo de red al subir.`);
         }
       }
 

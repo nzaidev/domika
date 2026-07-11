@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/domika/AppWidgets";
@@ -65,13 +64,12 @@ export default async function NetworkPage() {
                 key={listing.publicationId}
               >
                 {listing.coverUrl ? (
-                  <Image
+                  // eslint-disable-next-line @next/next/no-img-element -- storage assets are pre-normalized; skip the optimizer
+                  <img
                     src={listing.coverUrl}
                     alt={listing.title}
                     className={styles.propertyImage}
-                    width={900}
-                    height={506}
-                    sizes="(max-width: 820px) 100vw, 30vw"
+                    loading="lazy"
                   />
                 ) : (
                   <div className={styles.propertyImagePlaceholder}>

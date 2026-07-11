@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useState } from "react";
 import styles from "@/components/domika/domika-app.module.css";
 import { ImageLightbox } from "../ImageLightbox";
@@ -25,13 +24,12 @@ export function PropertyGallery({ images }: { images: GalleryImage[] }) {
             aria-label={`Ampliar foto ${index + 1}`}
             onClick={() => setZoomIndex(index)}
           >
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element -- storage assets are pre-normalized; skip the optimizer */}
+            <img
               src={image.src}
               alt={image.alt}
               className={styles.galleryImage}
-              width={800}
-              height={450}
-              sizes="(max-width: 820px) 100vw, 45vw"
+              loading="lazy"
             />
           </button>
         ))}

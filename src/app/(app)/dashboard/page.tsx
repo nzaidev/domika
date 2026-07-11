@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
@@ -133,13 +132,12 @@ export default async function DashboardPage() {
                   key={property.id}
                 >
                   {property.coverUrl ? (
-                    <Image
+                    // eslint-disable-next-line @next/next/no-img-element -- storage assets are pre-normalized; skip the optimizer
+                    <img
                       src={property.coverUrl}
                       alt={property.title}
                       className={styles.propertyImage}
-                      width={900}
-                      height={506}
-                      sizes="(max-width: 820px) 100vw, 30vw"
+                      loading="lazy"
                     />
                   ) : (
                     <div className={styles.propertyImagePlaceholder}>
