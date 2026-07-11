@@ -293,10 +293,39 @@ export async function createTask(
   const organizationId = session.profile.organization_id;
   const supabase = createAdminSupabaseClient();
 
+  // Verify any linked lead/property belongs to the caller's org — never
+  // trust IDs from the form (prevents cross-org foreign references).
+  const leadId = input.leadId || null;
+  let propertyId = input.propertyId || null;
+
+  if (leadId) {
+    const { data } = await supabase
+      .from("leads")
+      .select("id")
+      .eq("id", leadId)
+      .eq("organization_id", organizationId)
+      .maybeSingle();
+    if (!data) {
+      return { ok: false, error: "El prospecto vinculado no existe." };
+    }
+  }
+
+  if (propertyId) {
+    const { data } = await supabase
+      .from("properties")
+      .select("id")
+      .eq("id", propertyId)
+      .eq("organization_id", organizationId)
+      .maybeSingle();
+    if (!data) {
+      propertyId = null; // drop a bad property link rather than fail the task
+    }
+  }
+
   const { error } = await supabase.from("tasks").insert({
     organization_id: organizationId,
-    lead_id: input.leadId || null,
-    property_id: input.propertyId || null,
+    lead_id: leadId,
+    property_id: propertyId,
     assigned_to: input.assignedTo || session.profile.id,
     created_by: session.profile.id,
     task_type: input.taskType,
@@ -312,10 +341,10 @@ export async function createTask(
     return { ok: false, error: error.message };
   }
 
-  if (input.leadId) {
+  if (leadId) {
     await supabase.from("lead_activities").insert({
       organization_id: organizationId,
-      lead_id: input.leadId,
+      lead_id: leadId,
       actor_profile_id: session.profile.id,
       activity_type: "task",
       title: `Tarea creada: ${title}`,

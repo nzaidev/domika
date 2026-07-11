@@ -45,9 +45,14 @@ async function fetchLeadFieldData(
   accessToken: string,
 ): Promise<LeadFieldData | null> {
   try {
+    // Token in the Authorization header, never the URL (query strings leak
+    // into proxy/access logs far more readily than headers).
     const response = await fetch(
-      `${GRAPH_API_BASE}/${leadgenId}?fields=field_data&access_token=${encodeURIComponent(accessToken)}`,
-      { cache: "no-store" },
+      `${GRAPH_API_BASE}/${leadgenId}?fields=field_data`,
+      {
+        headers: { authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
+      },
     );
 
     if (!response.ok) {

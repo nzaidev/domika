@@ -5,8 +5,6 @@ import type { Json } from "@/lib/database.types";
 import { normalizePhone } from "@/lib/phone";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { runAutomationRules } from "@/lib/domain/automation";
-import { hasR2Config, r2Upload } from "@/lib/storage/r2";
-import { mediaUrl } from "@/lib/media";
 import { decryptSecret } from "@/lib/crypto/secret-box";
 
 const GRAPH_API_BASE = "https://graph.facebook.com/v21.0";
@@ -26,7 +24,12 @@ const MEDIA_EXTENSIONS: Record<string, string> = {
 // Inbound attachments arrive as Meta media IDs; the binary must be pulled
 // from the Graph API with the account's access token (media URLs expire in
 // minutes) and re-hosted in our own storage.
+//
+// These are customer-sent files (IDs, receipts, personal docs) — PRIVATE.
+// They go to the private `documents` bucket, served only through the authed,
+// org-checked /api/documents route, NEVER the public media bucket/domain.
 async function downloadInboundMedia(input: {
+  supabase: ReturnType<typeof createAdminSupabaseClient>;
   mediaId: string;
   accessToken: string;
   organizationId: string;
@@ -63,12 +66,15 @@ async function downloadInboundMedia(input: {
 
     const mimeType = info.mime_type ?? file.headers.get("content-type") ?? "application/octet-stream";
     const extension = MEDIA_EXTENSIONS[mimeType.split(";")[0]] ?? "bin";
+    // Path is org-prefixed so the /api/documents tenant check passes.
     const storagePath = `${input.organizationId}/whatsapp/${input.threadKey}/${randomUUID()}.${extension}`;
     const body = Buffer.from(await file.arrayBuffer());
 
-    const upload = await r2Upload(storagePath, body, mimeType);
+    const { error } = await input.supabase.storage
+      .from("documents")
+      .upload(storagePath, body, { contentType: mimeType });
 
-    if (upload.ok === false) {
+    if (error) {
       return null;
     }
 
@@ -139,6 +145,7 @@ function messageBody(message: MetaWebhookMessage): string | null {
 }
 
 async function messageMedia(
+  supabase: ReturnType<typeof createAdminSupabaseClient>,
   message: MetaWebhookMessage,
   context: { organizationId: string; accessToken: string | null },
 ) {
@@ -152,9 +159,11 @@ async function messageMedia(
   const entry: Record<string, unknown> = { type: message.type, ...media };
 
   // Re-host the binary when the account has a token; otherwise keep only
-  // the metadata (Meta media URLs expire within minutes).
-  if (context.accessToken && hasR2Config() && media.id) {
+  // the metadata (Meta media URLs expire within minutes). Served privately
+  // via /api/documents (session + org-prefix checked).
+  if (context.accessToken && media.id) {
     const downloaded = await downloadInboundMedia({
+      supabase,
       mediaId: media.id,
       accessToken: context.accessToken,
       organizationId: context.organizationId,
@@ -163,7 +172,7 @@ async function messageMedia(
 
     if (downloaded) {
       entry.storage_path = downloaded.storagePath;
-      entry.url = mediaUrl(downloaded.storagePath);
+      entry.url = `/api/documents/${downloaded.storagePath}`;
       entry.mime_type = downloaded.mimeType;
     }
   }
@@ -385,7 +394,7 @@ async function ingestMessage(
     external_message_id: message.id,
     direction: "inbound",
     body: messageBody(message),
-    media: (await messageMedia(message, {
+    media: (await messageMedia(supabase, message, {
       organizationId,
       accessToken: input.accessToken,
     })) as Json,

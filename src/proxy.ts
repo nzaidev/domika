@@ -23,5 +23,9 @@ export const proxy = clerkMiddleware(async (auth, request) => {
 export const config = {
   matcher: [
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // Always run auth on API routes, even those ending in an image
+    // extension (e.g. /api/documents/…​.jpg) — otherwise the private
+    // documents endpoint would skip Clerk and its session check.
+    "/(api|trpc)(.*)",
   ],
 };

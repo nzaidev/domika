@@ -1,5 +1,15 @@
+import { timingSafeEqual } from "node:crypto";
 import { hasSupabaseServerConfig } from "@/lib/supabase/config";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+
+function bearerMatches(header: string | null, secret: string): boolean {
+  const expected = `Bearer ${secret}`;
+  const received = header ?? "";
+  if (received.length !== expected.length) {
+    return false;
+  }
+  return timingSafeEqual(Buffer.from(received), Buffer.from(expected));
+}
 
 // Task-reminder job (§12 decision: Vercel Cron + route handlers).
 // Runs every 15 minutes (vercel.json): finds open tasks due within the next
@@ -15,7 +25,7 @@ export async function GET(request: Request) {
     return Response.json({ error: "CRON_SECRET no configurado." }, { status: 503 });
   }
 
-  if (request.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!bearerMatches(request.headers.get("authorization"), secret)) {
     return Response.json({ error: "No autorizado." }, { status: 401 });
   }
 
