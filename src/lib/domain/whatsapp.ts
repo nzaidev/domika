@@ -7,6 +7,7 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { runAutomationRules } from "@/lib/domain/automation";
 import { hasR2Config, r2Upload } from "@/lib/storage/r2";
 import { mediaUrl } from "@/lib/media";
+import { decryptSecret } from "@/lib/crypto/secret-box";
 
 const GRAPH_API_BASE = "https://graph.facebook.com/v21.0";
 const MAX_MEDIA_BYTES = 25 * 1024 * 1024;
@@ -219,12 +220,19 @@ export async function ingestWhatsappWebhook(
           .map((contact) => [contact.wa_id as string, contact.profile?.name]),
       );
 
+      let accessToken: string | null = null;
+      try {
+        accessToken = decryptSecret(account.access_token);
+      } catch (error) {
+        console.error("[whatsapp] token decrypt failed:", error);
+      }
+
       for (const message of messages) {
         const stored = await ingestMessage(supabase, {
           organizationId,
           message,
           contactName: contactNames.get(message.from) ?? null,
-          accessToken: account.access_token,
+          accessToken,
         });
 
         if (stored === "stored") {

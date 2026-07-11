@@ -2,6 +2,7 @@ import "server-only";
 
 import { normalizePhone } from "@/lib/phone";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { decryptSecret } from "@/lib/crypto/secret-box";
 
 const GRAPH_API_BASE = "https://graph.facebook.com/v21.0";
 
@@ -133,8 +134,15 @@ export async function ingestMetaLeadsWebhook(
         continue;
       }
 
-      const fieldData = page.access_token
-        ? await fetchLeadFieldData(leadgenId, page.access_token)
+      let pageToken: string | null = null;
+      try {
+        pageToken = decryptSecret(page.access_token);
+      } catch (error) {
+        console.error("[meta-leads] token decrypt failed:", error);
+      }
+
+      const fieldData = pageToken
+        ? await fetchLeadFieldData(leadgenId, pageToken)
         : null;
 
       // Same person may submit several forms; fold into the existing lead.

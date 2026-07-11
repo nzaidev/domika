@@ -6,6 +6,7 @@ import type {
 } from "@/lib/database.types";
 import { getSessionProfile } from "@/lib/auth/session";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { encryptSecret } from "@/lib/crypto/secret-box";
 
 // Self-service connection of Meta integrations (WhatsApp Cloud API number,
 // Lead Ads page). Access tokens are write-only from the UI: reads expose
@@ -128,7 +129,7 @@ export async function upsertWhatsappAccount(input: {
   };
 
   if (input.accessToken?.trim()) {
-    values.access_token = input.accessToken.trim();
+    values.access_token = encryptSecret(input.accessToken.trim());
   }
 
   const { error } = existing
@@ -207,7 +208,7 @@ export async function upsertMetaLeadPage(input: {
   };
 
   if (input.accessToken?.trim()) {
-    values.access_token = input.accessToken.trim();
+    values.access_token = encryptSecret(input.accessToken.trim());
   }
 
   const { error } = existing
