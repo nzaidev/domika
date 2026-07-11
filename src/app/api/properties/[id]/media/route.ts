@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import { getSessionProfile } from "@/lib/auth/session";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { mediaUrl } from "@/lib/media";
 
 // Property photo upload: validates, normalizes on ingest (EXIF rotation,
 // max 1600px, WebP), stores under "{org}/{property}/{uuid}.webp" in the
@@ -152,7 +153,9 @@ export async function POST(
         continue;
       }
 
-      uploaded.push({ id: mediaRow.id, url: mediaRow.public_url });
+      // Return the same-origin proxy URL, never the raw supabase.co URL
+      // (some browsers/ad-blockers block *.supabase.co).
+      uploaded.push({ id: mediaRow.id, url: mediaUrl(storagePath) });
       position += 1;
       hasAnyMedia = true;
       remainingSlots -= 1;
