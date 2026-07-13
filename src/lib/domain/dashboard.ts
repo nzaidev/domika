@@ -29,6 +29,8 @@ export type UpcomingTask = {
   dueAt: string | null;
   priority: string;
   leadId: string | null;
+  taskType: string;
+  overdue: boolean;
 };
 
 export type DashboardOverview =
@@ -127,11 +129,11 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
       .limit(4),
     supabase
       .from("tasks")
-      .select("id, title, due_at, priority, lead_id")
+      .select("id, title, due_at, priority, lead_id, task_type")
       .eq("organization_id", organizationId)
       .in("status", ["todo", "in_progress"])
       .order("due_at", { ascending: true, nullsFirst: false })
-      .limit(4),
+      .limit(6),
   ]);
 
   const threadRows = threads.data ?? [];
@@ -239,6 +241,10 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
       dueAt: task.due_at,
       priority: task.priority,
       leadId: task.lead_id,
+      taskType: task.task_type,
+      overdue: Boolean(
+        task.due_at && new Date(task.due_at).getTime() < Date.now(),
+      ),
     })),
   };
 }

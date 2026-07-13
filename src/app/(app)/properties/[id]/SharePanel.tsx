@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import styles from "@/components/domika/domika-app.module.css";
 import {
   sharePropertyAction,
@@ -21,6 +21,10 @@ export function SharePanel({
     sharePropertyAction,
     initialState,
   );
+  // Track the picked recipient so the submit stays disabled until one is
+  // chosen — previously you could submit the placeholder and get a
+  // server-side "Selecciona un destinatario." error.
+  const [recipient, setRecipient] = useState("");
 
   const hasRecipients =
     directory.organizations.length > 0 || directory.agents.length > 0;
@@ -39,7 +43,13 @@ export function SharePanel({
 
       <label className={styles.formField}>
         <span>Compartir con</span>
-        <select className={styles.textInput} name="recipient" defaultValue="">
+        <select
+          className={styles.textInput}
+          name="recipient"
+          required
+          value={recipient}
+          onChange={(event) => setRecipient(event.target.value)}
+        >
           <option value="" disabled>
             Selecciona destinatario…
           </option>
@@ -95,8 +105,16 @@ export function SharePanel({
         <p className={styles.mutedText}>Propiedad compartida.</p>
       ) : null}
 
-      <button className={styles.secondaryButton} type="submit" disabled={pending}>
-        {pending ? "Compartiendo…" : "Compartir propiedad"}
+      <button
+        className={styles.secondaryButton}
+        type="submit"
+        disabled={pending || !recipient}
+      >
+        {pending
+          ? "Compartiendo…"
+          : recipient
+            ? "Compartir propiedad"
+            : "Selecciona un destinatario"}
       </button>
     </form>
   );

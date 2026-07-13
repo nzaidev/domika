@@ -3,6 +3,16 @@ import { redirect } from "next/navigation";
 import { MetricGrid, PageHeader } from "@/components/domika/AppWidgets";
 import styles from "@/components/domika/domika-app.module.css";
 import { getDashboardOverview } from "@/lib/domain/dashboard";
+import { setTaskStatusAction } from "@/app/(app)/tasks/actions";
+
+const TASK_TYPE_LABELS: Record<string, string> = {
+  call: "Llamada",
+  visit: "Visita",
+  document: "Documento",
+  follow_up: "Seguimiento",
+  meeting: "Reunión",
+  other: "Otra",
+};
 import {
   formatPrice,
   STATUS_LABELS,
@@ -270,22 +280,49 @@ export default async function DashboardPage() {
           {overview.upcomingTasks.length > 0 ? (
             <div className={styles.taskList}>
               {overview.upcomingTasks.map((task) => (
-                <Link
-                  className={styles.taskCard}
-                  href={task.leadId ? `/leads/${task.leadId}` : "/tasks"}
-                  key={task.id}
-                  style={{ textDecoration: "none", color: "inherit" }}
-                >
-                  <strong>{task.title}</strong>
-                  <span className={styles.mutedText}>
-                    {task.dueAt
-                      ? new Date(task.dueAt).toLocaleString("es", {
-                          dateStyle: "medium",
-                          timeStyle: "short",
-                        })
-                      : "Sin fecha"}
-                  </span>
-                </Link>
+                <article className={styles.taskRow} key={task.id}>
+                  {/* Complete the task without leaving the dashboard. */}
+                  <form action={setTaskStatusAction}>
+                    <input type="hidden" name="taskId" value={task.id} />
+                    <input type="hidden" name="status" value="done" />
+                    <button
+                      className={styles.taskCheck}
+                      type="submit"
+                      aria-label={`Marcar "${task.title}" como completada`}
+                      title="Marcar como completada"
+                    >
+                      ○
+                    </button>
+                  </form>
+                  <div className={styles.taskBody}>
+                    <strong>{task.title}</strong>
+                    <span
+                      className={
+                        task.overdue ? styles.taskOverdue : styles.mutedText
+                      }
+                    >
+                      {[
+                        TASK_TYPE_LABELS[task.taskType] ?? task.taskType,
+                        task.dueAt
+                          ? new Date(task.dueAt).toLocaleString("es", {
+                              dateStyle: "medium",
+                              timeStyle: "short",
+                            })
+                          : "Sin fecha",
+                        task.overdue ? "vencida" : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                    {task.leadId ? (
+                      <span className={styles.taskLinks}>
+                        <Link href={`/leads/${task.leadId}`}>
+                          Ver prospecto
+                        </Link>
+                      </span>
+                    ) : null}
+                  </div>
+                </article>
               ))}
             </div>
           ) : (
