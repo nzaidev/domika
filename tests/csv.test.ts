@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseCsv } from "@/lib/csv";
+import { detectDelimiter, parseCsv } from "@/lib/csv";
 
 describe("parseCsv", () => {
   it("parses simple rows with a header", () => {
@@ -40,5 +40,33 @@ describe("parseCsv", () => {
       ["a", "b", "c"],
       ["1", "", "3"],
     ]);
+  });
+
+  // Spanish-locale Excel exports semicolon-delimited CSV.
+  it("auto-detects semicolon delimiters", () => {
+    expect(detectDelimiter("Nombre;Teléfono;Correo")).toBe(";");
+    expect(parseCsv("Nombre;Teléfono\nAna Suárez;70011122")).toEqual([
+      ["Nombre", "Teléfono"],
+      ["Ana Suárez", "70011122"],
+    ]);
+  });
+
+  it("auto-detects tab delimiters", () => {
+    expect(parseCsv("Nombre\tTeléfono\nAna\t70011122")).toEqual([
+      ["Nombre", "Teléfono"],
+      ["Ana", "70011122"],
+    ]);
+  });
+
+  it("does not mistake commas inside quoted fields for the delimiter", () => {
+    expect(parseCsv('Nombre;Notas\nAna;"prefiere tardes, no mañanas"')).toEqual([
+      ["Nombre", "Notas"],
+      ["Ana", "prefiere tardes, no mañanas"],
+    ]);
+  });
+
+  it("strips a UTF-8 BOM so the first header still maps", () => {
+    const rows = parseCsv("﻿Nombre completo,Teléfono\nAna,70011122");
+    expect(rows[0][0]).toBe("Nombre completo");
   });
 });
