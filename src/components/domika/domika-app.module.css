@@ -2625,7 +2625,7 @@ a.propertyCard:hover {
 
 .funnel {
   display: grid;
-  gap: 8px;
+  gap: 5px;
 }
 
 .funnelHead,
@@ -2655,21 +2655,19 @@ a.propertyCard:hover {
 
 .funnelBand {
   align-items: center;
-  clip-path: polygon(0 0, 100% 0, 93% 100%, 7% 100%);
+  clip-path: polygon(0 0, 100% 0, 92% 100%, 8% 100%);
   color: #ffffff;
   display: flex;
   justify-content: center;
   margin: 0 auto;
-  min-height: 40px;
+  min-height: 42px;
   transition: width 0.25s ease;
 }
 
 .funnelBandLabel {
   font-size: 13px;
   font-weight: 700;
-  overflow: hidden;
-  padding: 0 10px;
-  text-overflow: ellipsis;
+  padding: 0 16px;
   white-space: nowrap;
 }
 

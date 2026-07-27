@@ -99,7 +99,6 @@ function FunnelView({
   currency: string;
 }) {
   const counts = stages.map((s) => s.count);
-  const maxCount = Math.max(...counts, 1);
   const totalLeads = counts.reduce((sum, c) => sum + c, 0);
   const totalValue = stages.reduce((sum, s) => sum + s.value, 0);
   const firstCount = stages[0]?.count ?? 0;
@@ -123,8 +122,13 @@ function FunnelView({
         <span className={styles.funnelHeadCell}>% del total</span>
       </div>
 
-      {stages.map((stage) => {
-        const widthPct = 28 + 72 * (stage.count / maxCount);
+      {stages.map((stage, index) => {
+        // Inverted pyramid: width tapers by stage position, not client count,
+        // so every stage stays wide enough to read its label.
+        const widthPct =
+          stages.length > 1
+            ? 100 - (100 - 54) * (index / (stages.length - 1))
+            : 100;
         const sharePct = totalLeads > 0 ? (stage.count / totalLeads) * 100 : 0;
         const color = stageColor(stage.name);
         return (
