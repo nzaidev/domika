@@ -238,6 +238,20 @@ export function PropertyForm({ property }: { property?: PropertyRow }) {
         />
       </label>
 
+      <label className={styles.formField}>
+        <span>
+          Google Maps (URL) — opcional; si lo dejas vacío se usa la dirección
+        </span>
+        <input
+          className={styles.textInput}
+          name="mapUrl"
+          type="url"
+          defaultValue={property?.map_url ?? ""}
+          placeholder="https://maps.google.com/…"
+          maxLength={500}
+        />
+      </label>
+
       <div className={styles.formRow}>
         <label className={styles.formField}>
           <span>Dormitorios</span>

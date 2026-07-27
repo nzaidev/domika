@@ -4,9 +4,11 @@ import { PageHeader } from "@/components/domika/AppWidgets";
 import styles from "@/components/domika/domika-app.module.css";
 import type { LeadActivityRow } from "@/lib/database.types";
 import { getLeadDetail } from "@/lib/domain/lead-detail";
+import { getLeadInterests } from "@/lib/domain/interests";
 import { NoteForm, StageForm } from "./LeadDetailForms";
 import { EditLeadForm } from "./EditLeadForm";
 import { LeadTags } from "./LeadTags";
+import { LeadInterests } from "./LeadInterests";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +50,10 @@ export default async function LeadDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const detail = await getLeadDetail(id);
+  const [detail, interests] = await Promise.all([
+    getLeadDetail(id),
+    getLeadInterests(id),
+  ]);
 
   if (detail.status === "not_configured") {
     return (
@@ -244,6 +249,12 @@ export default async function LeadDetailPage({
             <span className={styles.eyebrow}>Etiquetas</span>
             <LeadTags leadId={lead.id} tags={tags} allTags={allTags} />
           </div>
+
+          <LeadInterests
+            leadId={lead.id}
+            linked={interests.linked}
+            options={interests.options}
+          />
 
           <StageForm
             leadId={lead.id}

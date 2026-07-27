@@ -246,8 +246,20 @@ export type PropertyRow = {
   owner_notes: string | null;
   video_url: string | null;
   virtual_tour_url: string | null;
+  active: boolean;
+  map_url: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type LeadPropertyInterestRow = {
+  id: string;
+  organization_id: string;
+  lead_id: string;
+  property_id: string;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
 };
 
 export type PropertyMediaRow = {
@@ -512,7 +524,12 @@ export type AuditLogRow = {
 // and address. Cross-org reads must use this view (see migration 0006).
 export type NetworkSafePropertyRow = Omit<
   PropertyRow,
-  "owner_name" | "owner_phone" | "owner_email" | "owner_notes" | "address"
+  | "owner_name"
+  | "owner_phone"
+  | "owner_email"
+  | "owner_notes"
+  | "address"
+  | "map_url"
 >;
 
 export type Database = {
@@ -533,6 +550,7 @@ export type Database = {
       pipeline_events: Table<PipelineEventRow>;
       properties: Table<PropertyRow>;
       property_media: Table<PropertyMediaRow>;
+      lead_property_interests: Table<LeadPropertyInterestRow>;
       listing_publications: Table<ListingPublicationRow>;
       listing_engagement_events: Table<ListingEngagementEventRow>;
       listing_lead_attributions: Table<ListingLeadAttributionRow>;

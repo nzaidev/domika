@@ -20,6 +20,11 @@ function notificationLink(notification: NotificationRow): string | null {
   if (typeof metadata.requirement_id === "string") {
     return "/matching";
   }
+  // Property alerts point to the recipient's shared-with view (the property
+  // lives in another org, so a direct /properties link would 404 for them).
+  if (typeof metadata.network_property_id === "string") {
+    return "/network";
+  }
   if (typeof metadata.lead_id === "string") {
     return `/leads/${metadata.lead_id}`;
   }

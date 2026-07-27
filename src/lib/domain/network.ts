@@ -30,6 +30,7 @@ function toSafeProperty(row: NetworkSafePropertyRow): SafeProperty {
   return {
     ...row,
     address: null,
+    map_url: null,
     owner_name: null,
     owner_phone: null,
     owner_email: null,
@@ -392,7 +393,7 @@ export async function shareProperty(input: {
 
   const { data: property } = await supabase
     .from("properties")
-    .select("id")
+    .select("id, title")
     .eq("id", input.propertyId)
     .eq("organization_id", organizationId)
     .maybeSingle();
@@ -427,6 +428,16 @@ export async function shareProperty(input: {
   if (error) {
     return { ok: false, error: error.message };
   }
+
+  // #5 — notify the recipient(s) so the share shows up in their activity/bell.
+  const { notifyNewShare } = await import("@/lib/domain/property-alerts");
+  await notifyNewShare({
+    ownerOrgId: organizationId,
+    propertyId: input.propertyId,
+    propertyTitle: property.title,
+    sharedByName: session.profile.full_name,
+    recipient: { kind: kind as "org" | "agent", id: recipientId },
+  });
 
   return { ok: true };
 }

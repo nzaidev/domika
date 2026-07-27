@@ -25,7 +25,8 @@ async function candidatePropertiesFor(
       .from("properties_network_safe")
       .select("*")
       .eq("organization_id", organizationId)
-      .in("status", ["available", "reserved"]),
+      .in("status", ["available", "reserved"])
+      .eq("active", true),
     supabase
       .from("listing_publications")
       .select("property_id, organization_id")
@@ -42,7 +43,8 @@ async function candidatePropertiesFor(
       .from("properties_network_safe")
       .select("*")
       .in("id", networkIds)
-      .in("status", ["available", "reserved"]);
+      .in("status", ["available", "reserved"])
+      .eq("active", true);
     networkProperties = data ?? [];
   }
 
@@ -170,7 +172,11 @@ export async function runMatchingForProperty(
         .maybeSingle(),
     ]);
 
-    if (!property || !["available", "reserved"].includes(property.status)) {
+    if (
+      !property ||
+      !property.active ||
+      !["available", "reserved"].includes(property.status)
+    ) {
       return;
     }
 

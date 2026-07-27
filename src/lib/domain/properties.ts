@@ -183,11 +183,65 @@ export type PropertyInput = {
   ownerPhone?: string | null;
   ownerEmail?: string | null;
   ownerNotes?: string | null;
+  mapUrl?: string | null;
 };
 
 export type PropertyMutationResult =
   | { ok: true; propertyId: string }
   | { ok: false; error: string };
+
+const STATUS_ALERT_LABELS: Record<string, string> = {
+  draft: "Borrador",
+  available: "Disponible",
+  reserved: "Reservada",
+  sold: "Vendida",
+  rented: "Alquilada",
+  archived: "Archivada",
+};
+
+// #7 — availability on/off. When off, unpublish from network + public link
+// so it disappears from the network feed, public page, and matching.
+export async function setPropertyActive(
+  propertyId: string,
+  active: boolean,
+): Promise<PropertyMutationResult> {
+  const session = await getSessionProfile();
+
+  if (session.status !== "authenticated") {
+    return { ok: false, error: "No hay una sesión activa con perfil." };
+  }
+
+  const organizationId = session.profile.organization_id;
+  const supabase = createAdminSupabaseClient();
+
+  const { data, error } = await supabase
+    .from("properties")
+    .update({ active })
+    .eq("id", propertyId)
+    .eq("organization_id", organizationId)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  if (!data) {
+    return { ok: false, error: "La propiedad no existe." };
+  }
+
+  if (!active) {
+    await supabase
+      .from("listing_publications")
+      .update({ status: "unpublished", unpublished_at: new Date().toISOString() })
+      .eq("organization_id", organizationId)
+      .eq("property_id", propertyId)
+      .eq("status", "published");
+  }
+
+  await runMatchingForProperty(propertyId);
+
+  return { ok: true, propertyId };
+}
 
 function propertyRowFromInput(input: PropertyInput) {
   return {
@@ -214,6 +268,7 @@ function propertyRowFromInput(input: PropertyInput) {
     owner_phone: normalizePhone(input.ownerPhone),
     owner_email: input.ownerEmail?.trim().toLowerCase() || null,
     owner_notes: input.ownerNotes?.trim() || null,
+    map_url: input.mapUrl?.trim() || null,
   };
 }
 
@@ -265,12 +320,22 @@ export async function updateProperty(
     return { ok: false, error: "El título es muy corto." };
   }
 
+  const organizationId = session.profile.organization_id;
   const supabase = createAdminSupabaseClient();
+
+  // Snapshot price/status before the write to detect changes worth alerting on.
+  const { data: before } = await supabase
+    .from("properties")
+    .select("price, currency, status, title")
+    .eq("id", propertyId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+
   const { data, error } = await supabase
     .from("properties")
     .update(propertyRowFromInput(input))
     .eq("id", propertyId)
-    .eq("organization_id", session.profile.organization_id)
+    .eq("organization_id", organizationId)
     .select("id")
     .maybeSingle();
 
@@ -283,6 +348,31 @@ export async function updateProperty(
   }
 
   await runMatchingForProperty(propertyId);
+
+  // #6 — alert agents this property was shared with, on price/status change.
+  if (before) {
+    const changes: string[] = [];
+    const symbol = (input.currency ?? "USD") === "BOB" ? "Bs" : "$";
+    if ((before.price ?? null) !== (input.price ?? null)) {
+      changes.push(
+        `Nuevo precio: ${input.price !== null && input.price !== undefined ? `${symbol}${Math.round(input.price).toLocaleString("en-US")}` : "a consultar"}`,
+      );
+    }
+    if (before.status !== input.status) {
+      changes.push(`Estado: ${STATUS_ALERT_LABELS[input.status] ?? input.status}`);
+    }
+    if (changes.length > 0) {
+      const { notifyPropertyChange } = await import(
+        "@/lib/domain/property-alerts"
+      );
+      await notifyPropertyChange({
+        ownerOrgId: organizationId,
+        propertyId,
+        propertyTitle: input.title.trim() || before.title,
+        changes,
+      });
+    }
+  }
 
   return { ok: true, propertyId };
 }
@@ -448,6 +538,36 @@ export async function moveMedia(input: {
       .update({ position: update.position })
       .eq("id", update.id)
       .eq("organization_id", organizationId);
+
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+  }
+
+  return { ok: true };
+}
+
+// Drag-and-drop reorder: persist the given order as sequential positions.
+export async function reorderMedia(input: {
+  propertyId: string;
+  orderedIds: string[];
+}): Promise<MediaMutationResult> {
+  const session = await getSessionProfile();
+
+  if (session.status !== "authenticated") {
+    return { ok: false, error: "No hay una sesión activa con perfil." };
+  }
+
+  const organizationId = session.profile.organization_id;
+  const supabase = createAdminSupabaseClient();
+
+  for (let index = 0; index < input.orderedIds.length; index += 1) {
+    const { error } = await supabase
+      .from("property_media")
+      .update({ position: index })
+      .eq("id", input.orderedIds[index])
+      .eq("organization_id", organizationId)
+      .eq("property_id", input.propertyId);
 
     if (error) {
       return { ok: false, error: error.message };

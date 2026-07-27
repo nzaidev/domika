@@ -1840,3 +1840,61 @@ a.propertyCard:hover {
   gap: 8px;
   grid-template-columns: minmax(0, 1fr) auto;
 }
+
+.mapEmbed {
+  border: 1px solid var(--app-soft);
+  border-radius: 8px;
+  height: 320px;
+  width: 100%;
+}
+
+.interestRow {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--app-soft);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 10px;
+}
+
+.availabilityToggle {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--app-soft);
+  border-radius: 8px;
+  color: var(--app-ink);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-weight: 600;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.availabilityToggle:disabled {
+  opacity: 0.6;
+}
+
+.toggleTrack {
+  background: var(--app-soft);
+  border-radius: 999px;
+  display: inline-flex;
+  height: 20px;
+  padding: 2px;
+  transition: background 0.15s ease;
+  width: 36px;
+}
+
+.toggleOn {
+  background: var(--app-green);
+  justify-content: flex-end;
+}
+
+.toggleKnob {
+  background: #ffffff;
+  border-radius: 999px;
+  height: 16px;
+  width: 16px;
+}

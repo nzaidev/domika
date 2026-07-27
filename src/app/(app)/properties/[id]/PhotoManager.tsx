@@ -9,6 +9,7 @@ import { mediaUrl } from "@/lib/media";
 import {
   deleteMediaAction,
   moveMediaAction,
+  reorderMediaAction,
   setCoverAction,
 } from "../actions";
 
@@ -24,6 +25,36 @@ export function PhotoManager({
   const [uploading, setUploading] = useState<string | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   const [, startTransition] = useTransition();
+
+  // Local order for drag-and-drop; re-syncs when the server data changes
+  // (render-time sync, React's sanctioned pattern for prop-derived state).
+  const [order, setOrder] = useState<PropertyMediaRow[]>(media);
+  const [syncedMedia, setSyncedMedia] = useState(media);
+  const dragIndex = useRef<number | null>(null);
+
+  if (syncedMedia !== media) {
+    setSyncedMedia(media);
+    setOrder(media);
+  }
+
+  function handleReorderDrop(targetIndex: number) {
+    const from = dragIndex.current;
+    dragIndex.current = null;
+    if (from === null || from === targetIndex) {
+      return;
+    }
+    const next = [...order];
+    const [moved] = next.splice(from, 1);
+    next.splice(targetIndex, 0, moved);
+    setOrder(next); // optimistic
+    startTransition(async () => {
+      await reorderMediaAction(
+        propertyId,
+        next.map((item) => item.id),
+      );
+      router.refresh();
+    });
+  }
 
   async function handleUpload(files: FileList) {
     setErrors([]);
@@ -110,10 +141,25 @@ export function PhotoManager({
         </p>
       ))}
 
-      {media.length > 0 ? (
+      {order.length > 0 ? (
         <div className={styles.photoList}>
-          {media.map((item, index) => (
-            <article className={styles.photoRow} key={item.id}>
+          <p className={styles.mutedText}>
+            Arrastra las fotos para reordenarlas.
+          </p>
+          {order.map((item, index) => (
+            <article
+              className={styles.photoRow}
+              key={item.id}
+              draggable
+              onDragStart={() => {
+                dragIndex.current = index;
+              }}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => {
+                event.preventDefault();
+                handleReorderDrop(index);
+              }}
+            >
               {/* eslint-disable-next-line @next/next/no-img-element -- thumbnails already normalized server-side */}
               <img
                 src={mediaUrl(item.storage_path)}
@@ -157,7 +203,7 @@ export function PhotoManager({
                   <button
                     className={styles.ghostButton}
                     type="submit"
-                    disabled={index === media.length - 1}
+                    disabled={index === order.length - 1}
                     aria-label="Bajar foto"
                   >
                     ↓

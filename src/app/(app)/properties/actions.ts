@@ -9,6 +9,7 @@ import {
   deleteProperty,
   moveMedia,
   setCoverMedia,
+  setPropertyActive,
   updateProperty,
   type PropertyInput,
 } from "@/lib/domain/properties";
@@ -73,7 +74,25 @@ function inputFromFormData(formData: FormData): PropertyInput {
     ownerPhone: String(formData.get("ownerPhone") ?? ""),
     ownerEmail: String(formData.get("ownerEmail") ?? ""),
     ownerNotes: String(formData.get("ownerNotes") ?? ""),
+    mapUrl: String(formData.get("mapUrl") ?? ""),
   };
+}
+
+export async function setPropertyActiveAction(
+  propertyId: string,
+  active: boolean,
+): Promise<{ error: string | null }> {
+  const result = await setPropertyActive(propertyId, active);
+
+  if (result.ok === false) {
+    return { error: result.error };
+  }
+
+  revalidatePath(`/properties/${propertyId}`);
+  revalidatePath("/properties");
+  revalidatePath("/network");
+  revalidatePath("/listings");
+  return { error: null };
 }
 
 export async function savePropertyAction(
@@ -129,6 +148,22 @@ export async function setCoverAction(formData: FormData) {
   revalidatePath(`/properties/${propertyId}`);
   revalidatePath(`/properties/${propertyId}/edit`);
   revalidatePath("/properties");
+}
+
+export async function reorderMediaAction(
+  propertyId: string,
+  orderedIds: string[],
+): Promise<{ error: string | null }> {
+  const { reorderMedia } = await import("@/lib/domain/properties");
+  const result = await reorderMedia({ propertyId, orderedIds });
+
+  if (result.ok === false) {
+    return { error: result.error };
+  }
+
+  revalidatePath(`/properties/${propertyId}`);
+  revalidatePath(`/properties/${propertyId}/edit`);
+  return { error: null };
 }
 
 export async function moveMediaAction(formData: FormData) {

@@ -9,6 +9,7 @@ import {
   getPropertyCollaboration,
   getShareDirectory,
 } from "@/lib/domain/network";
+import { getPropertyInterests } from "@/lib/domain/interests";
 import {
   revokeShareAction,
   setNetworkPublicationAction,
@@ -21,6 +22,9 @@ import {
   STATUS_LABELS,
 } from "../labels";
 import { PropertyGallery } from "./PropertyGallery";
+import { PropertyMap } from "./PropertyMap";
+import { PropertyInterests } from "./PropertyInterests";
+import { AvailabilityToggle } from "./AvailabilityToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -55,11 +59,13 @@ export default async function PropertyDetailPage({
   }
 
   const { property, media } = detail;
-  const [collaboration, directory, headerList] = await Promise.all([
-    getPropertyCollaboration(property.id),
-    getShareDirectory(),
-    headers(),
-  ]);
+  const [collaboration, directory, propertyInterests, headerList] =
+    await Promise.all([
+      getPropertyCollaboration(property.id),
+      getShareDirectory(),
+      getPropertyInterests(property.id),
+      headers(),
+    ]);
 
   const host = headerList.get("host") ?? "domika.io";
   const protocol = headerList.get("x-forwarded-proto") ?? "https";
@@ -120,6 +126,10 @@ export default async function PropertyDetailPage({
         }
         actions={
           <>
+            <AvailabilityToggle
+              propertyId={property.id}
+              active={property.active}
+            />
             <Link className={styles.secondaryButton} href="/properties">
               ← Inventario
             </Link>
@@ -176,6 +186,27 @@ export default async function PropertyDetailPage({
               <p className={styles.mutedText}>{property.description}</p>
             </section>
           ) : null}
+
+          <PropertyMap
+            address={property.address}
+            latitude={property.latitude}
+            longitude={property.longitude}
+            mapUrl={property.map_url}
+          />
+
+          <section className={styles.panel}>
+            <div className={styles.sectionHeader}>
+              <div>
+                <span className={styles.eyebrow}>Compradores potenciales</span>
+                <h2>Prospectos interesados</h2>
+              </div>
+            </div>
+            <PropertyInterests
+              propertyId={property.id}
+              linked={propertyInterests.linked}
+              options={propertyInterests.options}
+            />
+          </section>
 
           {amenities.length > 0 ? (
             <section className={styles.panel}>

@@ -69,6 +69,30 @@ export async function updateLeadAction(
   return { error: null };
 }
 
+export async function addInterestAction(formData: FormData) {
+  const { addInterest } = await import("@/lib/domain/interests");
+  const leadId = String(formData.get("leadId") ?? "");
+  const propertyId = String(formData.get("propertyId") ?? "");
+
+  if (leadId && propertyId) {
+    await addInterest({ leadId, propertyId });
+    revalidatePath(`/leads/${leadId}`);
+    revalidatePath(`/properties/${propertyId}`);
+  }
+}
+
+export async function removeInterestAction(formData: FormData) {
+  const { removeInterest } = await import("@/lib/domain/interests");
+  const leadId = String(formData.get("leadId") ?? "");
+  const propertyId = String(formData.get("propertyId") ?? "");
+
+  if (leadId && propertyId) {
+    await removeInterest({ leadId, propertyId });
+    revalidatePath(`/leads/${leadId}`);
+    revalidatePath(`/properties/${propertyId}`);
+  }
+}
+
 export async function assignTagAction(formData: FormData) {
   const { assignTag } = await import("@/lib/domain/tags");
   const leadId = String(formData.get("leadId") ?? "");
