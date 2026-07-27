@@ -136,6 +136,23 @@ export type WhatsappMessageRow = {
   created_at: string;
 };
 
+export type LeadTagRow = {
+  id: string;
+  organization_id: string;
+  name: string;
+  color: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type LeadTagAssignmentRow = {
+  id: string;
+  organization_id: string;
+  lead_id: string;
+  tag_id: string;
+  created_at: string;
+};
+
 export type PipelineStageRow = {
   id: string;
   organization_id: string;
@@ -509,6 +526,8 @@ export type Database = {
       whatsapp_threads: Table<WhatsappThreadRow>;
       whatsapp_messages: Table<WhatsappMessageRow>;
       pipeline_stages: Table<PipelineStageRow>;
+      lead_tags: Table<LeadTagRow>;
+      lead_tag_assignments: Table<LeadTagAssignmentRow>;
       leads: Table<LeadRow>;
       lead_activities: Table<LeadActivityRow>;
       pipeline_events: Table<PipelineEventRow>;

@@ -9,6 +9,7 @@ import styles from "./domika-app.module.css";
 const navItems = [
   { href: "/dashboard", label: "Resumen" },
   { href: "/leads", label: "Prospectos" },
+  { href: "/tags", label: "Etiquetas" },
   { href: "/properties", label: "Propiedades" },
   { href: "/listings", label: "Promoción" },
   { href: "/brochures", label: "Folletos" },

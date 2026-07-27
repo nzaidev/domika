@@ -69,6 +69,30 @@ export async function updateLeadAction(
   return { error: null };
 }
 
+export async function assignTagAction(formData: FormData) {
+  const { assignTag } = await import("@/lib/domain/tags");
+  const leadId = String(formData.get("leadId") ?? "");
+  const tagId = String(formData.get("tagId") ?? "");
+
+  if (leadId && tagId) {
+    await assignTag({ leadId, tagId });
+    revalidatePath(`/leads/${leadId}`);
+    revalidatePath("/leads");
+  }
+}
+
+export async function unassignTagAction(formData: FormData) {
+  const { unassignTag } = await import("@/lib/domain/tags");
+  const leadId = String(formData.get("leadId") ?? "");
+  const tagId = String(formData.get("tagId") ?? "");
+
+  if (leadId && tagId) {
+    await unassignTag({ leadId, tagId });
+    revalidatePath(`/leads/${leadId}`);
+    revalidatePath("/leads");
+  }
+}
+
 export async function addLeadNoteAction(
   _previousState: LeadDetailFormState,
   formData: FormData,

@@ -1,13 +1,20 @@
 import "server-only";
 
-import type { LeadRow, PipelineStageRow } from "@/lib/database.types";
+import type {
+  LeadRow,
+  LeadTagRow,
+  PipelineStageRow,
+} from "@/lib/database.types";
 import { normalizePhone } from "@/lib/phone";
 import { runNewLeadAutomation } from "@/lib/domain/automation";
+import { listTags, tagsForLeads } from "@/lib/domain/tags";
 import { getSessionProfile } from "@/lib/auth/session";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
+export type BoardLead = LeadRow & { tags: LeadTagRow[] };
+
 export type LeadsBoardStage = PipelineStageRow & {
-  leads: LeadRow[];
+  leads: BoardLead[];
 };
 
 export type LeadFilters = {
@@ -15,6 +22,7 @@ export type LeadFilters = {
   source?: LeadRow["source"];
   assignedTo?: string;
   businessUnit?: string;
+  tagId?: string;
 };
 
 export type BoardMember = { id: string; full_name: string };
@@ -28,6 +36,7 @@ export type LeadsBoard =
       stages: LeadsBoardStage[];
       totalLeads: number;
       members: BoardMember[];
+      tags: LeadTagRow[];
     };
 
 export async function getLeadsBoard(
@@ -42,10 +51,28 @@ export async function getLeadsBoard(
   const organizationId = session.profile.organization_id;
   const supabase = createAdminSupabaseClient();
 
+  // Tag filter: restrict to lead IDs carrying the selected tag.
+  let tagLeadIds: string[] | null = null;
+  if (filters.tagId) {
+    const { data: tagged } = await supabase
+      .from("lead_tag_assignments")
+      .select("lead_id")
+      .eq("organization_id", organizationId)
+      .eq("tag_id", filters.tagId);
+    tagLeadIds = (tagged ?? []).map((row) => row.lead_id);
+    if (tagLeadIds.length === 0) {
+      tagLeadIds = ["00000000-0000-0000-0000-000000000000"]; // match nothing
+    }
+  }
+
   let leadsQuery = supabase
     .from("leads")
     .select("*")
     .eq("organization_id", organizationId);
+
+  if (tagLeadIds) {
+    leadsQuery = leadsQuery.in("id", tagLeadIds);
+  }
 
   if (filters.q) {
     const term = filters.q.replace(/[%,()]/g, " ").trim();
@@ -96,12 +123,21 @@ export async function getLeadsBoard(
   }
 
   const stages = stagesResult.data ?? [];
-  const leads = leadsResult.data ?? [];
+  const rawLeads = leadsResult.data ?? [];
 
-  const byStage = new Map<string, LeadRow[]>(
+  const [tagMap, allTags] = await Promise.all([
+    tagsForLeads(rawLeads.map((lead) => lead.id)),
+    listTags(),
+  ]);
+  const leads: BoardLead[] = rawLeads.map((lead) => ({
+    ...lead,
+    tags: tagMap.get(lead.id) ?? [],
+  }));
+
+  const byStage = new Map<string, BoardLead[]>(
     stages.map((stage) => [stage.id, []]),
   );
-  const unstaged: LeadRow[] = [];
+  const unstaged: BoardLead[] = [];
 
   for (const lead of leads) {
     const bucket = lead.stage_id ? byStage.get(lead.stage_id) : undefined;
@@ -127,6 +163,7 @@ export async function getLeadsBoard(
     stages: boardStages,
     totalLeads: leads.length,
     members: (membersResult.data ?? []) as BoardMember[],
+    tags: allTags,
   };
 }
 

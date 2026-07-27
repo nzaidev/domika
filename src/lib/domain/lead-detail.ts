@@ -3,6 +3,7 @@ import "server-only";
 import type {
   LeadActivityRow,
   LeadRow,
+  LeadTagRow,
   PipelineStageRow,
   ProfileRow,
   WhatsappMessageRow,
@@ -12,6 +13,7 @@ import { normalizePhone } from "@/lib/phone";
 import { getSessionProfile } from "@/lib/auth/session";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { runAutomationRules } from "@/lib/domain/automation";
+import { listTags, tagsForLeads } from "@/lib/domain/tags";
 
 export type LeadDetail =
   | { status: "not_configured" }
@@ -28,6 +30,8 @@ export type LeadDetail =
       activities: LeadActivityRow[];
       thread: WhatsappThreadRow | null;
       messages: WhatsappMessageRow[];
+      tags: LeadTagRow[];
+      allTags: LeadTagRow[];
     };
 
 export async function getLeadDetail(leadId: string): Promise<LeadDetail> {
@@ -114,11 +118,17 @@ export async function getLeadDetail(leadId: string): Promise<LeadDetail> {
   }
 
   const stageList = stages.data ?? [];
+  const [tagMap, allTags] = await Promise.all([
+    tagsForLeads([leadId]),
+    listTags(),
+  ]);
 
   return {
     status: "ready",
     lead,
     stages: stageList,
+    tags: tagMap.get(leadId) ?? [],
+    allTags,
     currentStage: stageList.find((stage) => stage.id === lead.stage_id) ?? null,
     assignee: assignee.data ?? null,
     members: members.data ?? [],

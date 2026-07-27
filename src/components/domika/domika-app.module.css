@@ -1745,3 +1745,98 @@ a.propertyCard:hover {
   font-size: 12px;
   padding: 1px 5px;
 }
+
+.tagChip {
+  border-radius: 999px;
+  color: #ffffff;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+
+.tagRow {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--app-soft);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto 1fr auto;
+  padding: 10px;
+}
+
+.tagEditRow {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 44px minmax(0, 1fr) auto auto;
+}
+
+.tagList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tagRemoveChip {
+  align-items: center;
+  background: none;
+  border: none;
+  border-radius: 999px;
+  color: #ffffff;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 6px;
+  padding: 4px 10px;
+}
+
+.tagRemoveChip span {
+  opacity: 0.85;
+}
+
+@media (max-width: 820px) {
+  .tagRow {
+    grid-template-columns: 1fr;
+  }
+
+  .tagEditRow {
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+}
+
+.leadsBoardArea {
+  display: grid;
+  gap: 16px;
+}
+
+.createLeadBar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.tagChipSmall {
+  border-radius: 999px;
+  color: #ffffff;
+  display: inline-flex;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+  padding: 1px 7px;
+}
+
+.leadTagsBlock {
+  display: grid;
+  gap: 8px;
+}
+
+.tagAddRow {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}

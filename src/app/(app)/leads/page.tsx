@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/domika/AppWidgets";
 import styles from "@/components/domika/domika-app.module.css";
 import type { LeadRow } from "@/lib/database.types";
 import { getLeadsBoard, type LeadFilters } from "@/lib/domain/leads";
-import { CreateLeadForm } from "./CreateLeadForm";
+import { CreateLeadPanel } from "./CreateLeadPanel";
 import { LeadsBoard } from "./LeadsBoard";
 
 export const dynamic = "force-dynamic";
@@ -47,6 +47,7 @@ export default async function LeadsPage({
         ?.value as LeadFilters["source"]) || undefined,
     assignedTo: firstParam(params.assignee) || undefined,
     businessUnit: firstParam(params.unit) || undefined,
+    tagId: firstParam(params.tag) || undefined,
   };
 
   const board = await getLeadsBoard(filters);
@@ -73,7 +74,11 @@ export default async function LeadsPage({
   }
 
   const hasFilters = Boolean(
-    filters.q || filters.source || filters.assignedTo || filters.businessUnit,
+    filters.q ||
+      filters.source ||
+      filters.assignedTo ||
+      filters.businessUnit ||
+      filters.tagId,
   );
 
   return (
@@ -138,6 +143,20 @@ export default async function LeadsPage({
             </option>
           ))}
         </select>
+        {board.tags.length > 0 ? (
+          <select
+            className={styles.textInput}
+            name="tag"
+            defaultValue={firstParam(params.tag)}
+          >
+            <option value="">Etiqueta: todas</option>
+            {board.tags.map((tag) => (
+              <option key={tag.id} value={tag.id}>
+                {tag.name}
+              </option>
+            ))}
+          </select>
+        ) : null}
         <button className={styles.secondaryButton} type="submit">
           Filtrar
         </button>
@@ -148,17 +167,9 @@ export default async function LeadsPage({
         ) : null}
       </form>
 
-      <div className={styles.leadsGrid}>
+      <div className={styles.leadsBoardArea}>
+        <CreateLeadPanel />
         <LeadsBoard stages={board.stages} />
-        <aside className={styles.detailRail}>
-          <div className={styles.sectionHeader}>
-            <div>
-              <span className={styles.eyebrow}>Captura manual</span>
-              <h2>Nuevo prospecto</h2>
-            </div>
-          </div>
-          <CreateLeadForm />
-        </aside>
       </div>
     </div>
   );

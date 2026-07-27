@@ -6,6 +6,7 @@ import type { LeadActivityRow } from "@/lib/database.types";
 import { getLeadDetail } from "@/lib/domain/lead-detail";
 import { NoteForm, StageForm } from "./LeadDetailForms";
 import { EditLeadForm } from "./EditLeadForm";
+import { LeadTags } from "./LeadTags";
 
 export const dynamic = "force-dynamic";
 
@@ -80,6 +81,8 @@ export default async function LeadDetailPage({
     activities,
     thread,
     messages,
+    tags,
+    allTags,
   } = detail;
   const budget = formatBudget(lead.budget_min, lead.budget_max);
 
@@ -236,6 +239,11 @@ export default async function LeadDetailPage({
           </div>
 
           <EditLeadForm lead={lead} members={members} />
+
+          <div className={styles.leadTagsBlock}>
+            <span className={styles.eyebrow}>Etiquetas</span>
+            <LeadTags leadId={lead.id} tags={tags} allTags={allTags} />
+          </div>
 
           <StageForm
             leadId={lead.id}

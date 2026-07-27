@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useOptimistic, useState, useTransition } from "react";
 import styles from "@/components/domika/domika-app.module.css";
 import type { LeadRow } from "@/lib/database.types";
-import type { LeadsBoardStage } from "@/lib/domain/leads";
+import type { BoardLead, LeadsBoardStage } from "@/lib/domain/leads";
 import { moveLeadAction } from "./actions";
 
 const SOURCE_LABELS: Record<LeadRow["source"], string> = {
@@ -33,7 +33,7 @@ function leadSubtitle(lead: LeadRow) {
 type Move = { leadId: string; toStageId: string };
 
 function applyMove(stages: LeadsBoardStage[], move: Move): LeadsBoardStage[] {
-  let moved: LeadRow | null = null;
+  let moved: BoardLead | null = null;
 
   const without = stages.map((stage) => {
     const lead = stage.leads.find((entry) => entry.id === move.leadId);
@@ -53,7 +53,7 @@ function applyMove(stages: LeadsBoardStage[], move: Move): LeadsBoardStage[] {
 
   return without.map((stage) =>
     stage.id === move.toStageId
-      ? { ...stage, leads: [moved as LeadRow, ...stage.leads] }
+      ? { ...stage, leads: [moved as BoardLead, ...stage.leads] }
       : stage,
   );
 }
@@ -143,6 +143,19 @@ export function LeadsBoard({ stages }: { stages: LeadsBoardStage[] }) {
                 >
                   <strong>{lead.full_name}</strong>
                   <small>{leadSubtitle(lead)}</small>
+                  {lead.tags?.length ? (
+                    <span className={styles.tagList}>
+                      {lead.tags.map((tag) => (
+                        <span
+                          className={styles.tagChipSmall}
+                          style={{ background: tag.color }}
+                          key={tag.id}
+                        >
+                          {tag.name}
+                        </span>
+                      ))}
+                    </span>
+                  ) : null}
                 </Link>
               ))}
               {stage.leads.length === 0 ? (
