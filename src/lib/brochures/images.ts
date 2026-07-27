@@ -24,11 +24,16 @@ export async function fetchStorageBytes(
   storagePath: string,
   publicUrl: string | null,
   supabase: SupabaseAdmin,
+  mediaBaseUrl?: string | null,
 ): Promise<ArrayBuffer | null> {
-  // Try absolute URLs only — server-side fetch() can't resolve a relative
-  // "/api/media/..." path (which is what public_url is often stored as), so
-  // the R2 public URL from mediaUrl() is the one that actually works.
-  const candidates = [publicUrl, mediaUrl(storagePath)].filter(
+  // Server-side fetch() needs an ABSOLUTE URL. In production both mediaUrl()
+  // and the stored public_url are relative "/api/media/..." paths, so build an
+  // absolute URL against the app origin (mediaBaseUrl) — that same-origin proxy
+  // serves the object and is exactly what the public pages already use.
+  const proxyUrl = mediaBaseUrl
+    ? `${mediaBaseUrl.replace(/\/+$/, "")}/api/media/${storagePath}`
+    : null;
+  const candidates = [publicUrl, mediaUrl(storagePath), proxyUrl].filter(
     (url): url is string => Boolean(url) && /^https?:\/\//.test(url as string),
   );
 
@@ -68,8 +73,14 @@ export async function fetchStorageImageAsJpeg(
   storagePath: string,
   publicUrl: string | null,
   supabase: SupabaseAdmin,
+  mediaBaseUrl?: string | null,
 ): Promise<Buffer | null> {
-  const bytes = await fetchStorageBytes(storagePath, publicUrl, supabase);
+  const bytes = await fetchStorageBytes(
+    storagePath,
+    publicUrl,
+    supabase,
+    mediaBaseUrl,
+  );
   return bytes ? await bytesToBrochureJpeg(bytes) : null;
 }
 

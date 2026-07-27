@@ -40,6 +40,7 @@ type MediaRow = {
 async function loadMediaJpegs(
   supabase: ReturnType<typeof createAdminSupabaseClient>,
   rows: MediaRow[],
+  mediaBaseUrl?: string | null,
 ): Promise<Buffer[]> {
   const jpegs: Buffer[] = [];
 
@@ -48,6 +49,7 @@ async function loadMediaJpegs(
       row.storage_path,
       row.public_url,
       supabase,
+      mediaBaseUrl,
     );
     if (jpeg) {
       jpegs.push(jpeg);
@@ -96,6 +98,7 @@ async function buildBrochureData(
     heroMediaId?: string | null;
     stripMediaIds?: string[];
   },
+  mediaBaseUrl?: string | null,
 ): Promise<BrochureData | null> {
   const [{ data: property }, { data: organization }, { data: media }] =
     await Promise.all([
@@ -132,9 +135,14 @@ async function buildBrochureData(
 
   const [coverJpeg, galleryJpegs, logoJpeg] = await Promise.all([
     hero
-      ? fetchStorageImageAsJpeg(hero.storage_path, hero.public_url, supabase)
+      ? fetchStorageImageAsJpeg(
+          hero.storage_path,
+          hero.public_url,
+          supabase,
+          mediaBaseUrl,
+        )
       : Promise.resolve(null),
-    loadMediaJpegs(supabase, strip),
+    loadMediaJpegs(supabase, strip, mediaBaseUrl),
     organization.logo_url
       ? fetchRemoteImageAsJpeg(organization.logo_url)
       : Promise.resolve(null),
@@ -342,6 +350,7 @@ export async function generateBrochure(input: {
       heroMediaId: input.heroMediaId,
       stripMediaIds: input.stripMediaIds,
     },
+    input.baseUrl ?? null,
   );
 
   if (!data) {
