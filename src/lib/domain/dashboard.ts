@@ -51,6 +51,7 @@ export type DashboardOverview =
       inbox: InboxThread[];
       leadSources: SourceCount[];
       upcomingTasks: UpcomingTask[];
+      inventory: { value: number; currency: string; count: number };
     };
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -80,7 +81,7 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
 
   const organizationId = session.profile.organization_id;
   const supabase = createAdminSupabaseClient();
-  const [leads, properties, publishedListings, openTasks, recent] =
+  const [leads, properties, publishedListings, openTasks, recent, priceRows] =
     await Promise.all([
     supabase
       .from("leads")
@@ -106,6 +107,10 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
       .eq("organization_id", organizationId)
       .order("created_at", { ascending: false })
       .limit(3),
+    supabase
+      .from("properties")
+      .select("price, currency")
+      .eq("organization_id", organizationId),
   ]);
 
   const [stageRows, leadRows, threads, taskRows] = await Promise.all([
@@ -168,6 +173,18 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
   for (const result of [leads, properties, publishedListings, openTasks, recent]) {
     if (result.error) {
       throw result.error;
+    }
+  }
+
+  const inventoryRows = priceRows.data ?? [];
+  let inventoryValue = 0;
+  let inventoryCurrency = "USD";
+  for (const row of inventoryRows) {
+    if (typeof row.price === "number") {
+      inventoryValue += row.price;
+    }
+    if (row.currency) {
+      inventoryCurrency = row.currency;
     }
   }
 
@@ -246,5 +263,10 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
         task.due_at && new Date(task.due_at).getTime() < Date.now(),
       ),
     })),
+    inventory: {
+      value: inventoryValue,
+      currency: inventoryCurrency,
+      count: inventoryRows.length,
+    },
   };
 }

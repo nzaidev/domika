@@ -1,23 +1,48 @@
 "use client";
 
 import { UserButton } from "@clerk/nextjs";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import styles from "./domika-app.module.css";
+import {
+  BellIcon,
+  BrandMark,
+  BuildingIcon,
+  ChevronIcon,
+  ContractIcon,
+  FileIcon,
+  GearIcon,
+  HelpIcon,
+  HomeIcon,
+  MegaphoneIcon,
+  NetworkIcon,
+  PlusIcon,
+  SearchIcon,
+  TagIcon,
+  TargetIcon,
+  TaskIcon,
+  UsersIcon,
+  type IconProps,
+} from "./icons";
 
-const navItems = [
-  { href: "/dashboard", label: "Resumen" },
-  { href: "/leads", label: "Prospectos" },
-  { href: "/tags", label: "Etiquetas" },
-  { href: "/properties", label: "Propiedades" },
-  { href: "/listings", label: "Promoción" },
-  { href: "/brochures", label: "Folletos" },
-  { href: "/contracts", label: "Contratos" },
-  { href: "/network", label: "Red de agentes" },
-  { href: "/matching", label: "Coincidencias" },
-  { href: "/tasks", label: "Tareas" },
-  { href: "/settings", label: "Ajustes" },
+type NavItem = {
+  href: string;
+  label: string;
+  Icon: (props: IconProps) => React.ReactElement;
+};
+
+const navItems: NavItem[] = [
+  { href: "/dashboard", label: "Escritorio", Icon: HomeIcon },
+  { href: "/leads", label: "Prospectos", Icon: UsersIcon },
+  { href: "/tags", label: "Etiquetas", Icon: TagIcon },
+  { href: "/properties", label: "Propiedades", Icon: BuildingIcon },
+  { href: "/listings", label: "Promoción", Icon: MegaphoneIcon },
+  { href: "/brochures", label: "Folletos", Icon: FileIcon },
+  { href: "/contracts", label: "Contratos", Icon: ContractIcon },
+  { href: "/network", label: "Red de agentes", Icon: NetworkIcon },
+  { href: "/matching", label: "Coincidencias", Icon: TargetIcon },
+  { href: "/tasks", label: "Tareas", Icon: TaskIcon },
 ];
 
 function isActivePath(pathname: string, href: string) {
@@ -32,63 +57,92 @@ export function DomikaAppShell({
   unreadNotifications?: number;
 }) {
   const pathname = usePathname();
+  const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div className={styles.shell}>
+    <div className={`${styles.shell} ${collapsed ? styles.collapsed : ""}`}>
       <aside className={styles.sidebar}>
         <Link className={styles.brand} href="/dashboard" aria-label="Domika">
-          <Image
-            src="/brand/domika-logo-light.jpeg"
-            alt="Domika"
-            className={styles.brandImage}
-            width={1600}
-            height={1033}
-            priority
-          />
+          <span className={styles.brandMark}>
+            <BrandMark />
+          </span>
+          <span className={styles.brandWord}>domika</span>
         </Link>
+
+        <button
+          className={styles.collapseToggle}
+          type="button"
+          onClick={() => setCollapsed((c) => !c)}
+          aria-label={collapsed ? "Expandir menú" : "Colapsar menú"}
+        >
+          <ChevronIcon direction={collapsed ? "right" : "left"} />
+        </button>
+
         <nav className={styles.navStack} aria-label="Navegación principal">
-          {navItems.map((item) => (
-            <Link
-              aria-current={isActivePath(pathname, item.href) ? "page" : undefined}
-              className={
-                isActivePath(pathname, item.href)
-                  ? `${styles.navLink} ${styles.navLinkActive}`
-                  : styles.navLink
-              }
-              href={item.href}
-              key={item.href}
-            >
-              <span>{item.label}</span>
-            </Link>
-          ))}
+          {navItems.map((item) => {
+            const active = isActivePath(pathname, item.href);
+            return (
+              <Link
+                aria-current={active ? "page" : undefined}
+                className={
+                  active
+                    ? `${styles.navLink} ${styles.navLinkActive}`
+                    : styles.navLink
+                }
+                href={item.href}
+                key={item.href}
+                title={item.label}
+              >
+                <span className={styles.navIcon}>
+                  <item.Icon />
+                </span>
+                <span className={styles.navLabel}>{item.label}</span>
+              </Link>
+            );
+          })}
         </nav>
+
+        <div className={styles.sidebarSpacer} />
+        <div className={styles.navDivider} />
+
+        <Link
+          aria-current={
+            isActivePath(pathname, "/settings") ? "page" : undefined
+          }
+          className={
+            isActivePath(pathname, "/settings")
+              ? `${styles.navLink} ${styles.navLinkActive}`
+              : styles.navLink
+          }
+          href="/settings"
+          title="Configuración"
+        >
+          <span className={styles.navIcon}>
+            <GearIcon />
+          </span>
+          <span className={styles.navLabel}>Configuración</span>
+        </Link>
+
         <div className={styles.sidebarFoot}>
-          <span>Domika Inmobiliaria</span>
-          <strong>Espacio de propietario</strong>
+          <UserButton
+            appearance={{ elements: { avatarBox: { width: 34, height: 34 } } }}
+          />
+          <div className={styles.profileMeta}>
+            <strong>Mi cuenta</strong>
+            <span>Domika</span>
+          </div>
         </div>
       </aside>
+
       <main className={styles.main}>
         <header className={styles.topRail}>
-          <Link
-            className={styles.brandCompact}
-            href="/dashboard"
-            aria-label="Domika"
-          >
-            <Image
-              src="/brand/domika-logo-light.jpeg"
-              alt="Domika"
-              className={styles.brandImage}
-              width={1600}
-              height={1033}
-              priority
-            />
-          </Link>
           <form
             className={styles.searchBox}
             role="search"
             method="get"
             action="/search"
           >
+            <SearchIcon />
             <input
               className={styles.searchInput}
               type="search"
@@ -96,19 +150,34 @@ export function DomikaAppShell({
               placeholder="Buscar prospectos y propiedades"
               aria-label="Buscar prospectos y propiedades"
             />
+            <span className={styles.searchKbd}>⌘K</span>
           </form>
           <div className={styles.topActions}>
             <Link
-              className={styles.bellLink}
+              className={styles.addButtonRound}
+              href="/properties/new"
+              aria-label="Nueva propiedad"
+            >
+              <PlusIcon />
+            </Link>
+            <Link
+              className={styles.iconButtonRound}
               href="/notifications"
               aria-label={`Notificaciones${unreadNotifications > 0 ? ` (${unreadNotifications} sin leer)` : ""}`}
             >
-              🔔
+              <BellIcon />
               {unreadNotifications > 0 ? (
-                <span className={styles.bellBadge}>
-                  {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                <span className={styles.bellDot}>
+                  {unreadNotifications > 9 ? "9+" : unreadNotifications}
                 </span>
               ) : null}
+            </Link>
+            <Link
+              className={styles.iconButtonRound}
+              href="/leads/import"
+              aria-label="Importar contactos"
+            >
+              <HelpIcon />
             </Link>
             <Link className={styles.secondaryButton} href="/leads/import">
               Importar
@@ -116,7 +185,6 @@ export function DomikaAppShell({
             <Link className={styles.primaryButton} href="/properties/new">
               Nueva propiedad
             </Link>
-            <UserButton />
           </div>
         </header>
         {children}
