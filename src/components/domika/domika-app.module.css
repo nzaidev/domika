@@ -2495,3 +2495,202 @@ a.propertyCard:hover {
     flex-direction: column;
   }
 }
+
+/* ============================================================
+   Pipeline card: Etapas ⇄ Embudo toggle + funnel view
+   ============================================================ */
+
+.pipelineToggle {
+  background: var(--app-soft-2);
+  border-radius: 999px;
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+}
+
+.pipelineToggleBtn {
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  color: var(--app-muted);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 14px;
+}
+
+.pipelineToggleActive {
+  background: #ffffff;
+  box-shadow: var(--shadow-card);
+  color: var(--app-green-deep);
+}
+
+.pipelineFoot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.funnel {
+  display: grid;
+  gap: 8px;
+}
+
+.funnelHead,
+.funnelRow {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1.5fr) 52px minmax(96px, 0.9fr) minmax(110px, 1fr);
+}
+
+.funnelHeadCell {
+  color: var(--app-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.funnelHead span:nth-child(2) {
+  text-align: center;
+}
+
+.funnelBandCell {
+  min-width: 0;
+}
+
+.funnelBand {
+  align-items: center;
+  clip-path: polygon(0 0, 100% 0, 93% 100%, 7% 100%);
+  color: #ffffff;
+  display: flex;
+  justify-content: center;
+  margin: 0 auto;
+  min-height: 40px;
+  transition: width 0.25s ease;
+}
+
+.funnelBandLabel {
+  font-size: 13px;
+  font-weight: 700;
+  overflow: hidden;
+  padding: 0 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.funnelCount {
+  color: var(--app-ink);
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.funnelValue {
+  color: var(--app-muted);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.funnelPct {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.funnelBarTrack {
+  background: var(--app-soft-2);
+  border-radius: 999px;
+  flex: 1;
+  height: 8px;
+  min-width: 36px;
+  overflow: hidden;
+}
+
+.funnelBarFill {
+  border-radius: 999px;
+  display: block;
+  height: 100%;
+}
+
+.funnelPctLabel {
+  color: var(--app-muted);
+  font-size: 12px;
+  font-weight: 700;
+  min-width: 34px;
+  text-align: right;
+}
+
+.funnelTotals {
+  align-items: center;
+  background: var(--app-panel-strong);
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  padding: 14px 16px;
+}
+
+.funnelTotalRight {
+  text-align: right;
+}
+
+.funnelTotalLabel {
+  color: var(--app-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.funnelConversion {
+  color: var(--app-ink);
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  margin-top: 2px;
+}
+
+.funnelPipelineValue {
+  color: var(--app-green-deep);
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 800;
+  margin-top: 2px;
+}
+
+@media (max-width: 640px) {
+  .funnelHead {
+    display: none;
+  }
+
+  .funnelRow {
+    grid-template-areas:
+      "band count"
+      "pct pct";
+    grid-template-columns: minmax(0, 1fr) 44px;
+    row-gap: 8px;
+  }
+
+  .funnelBandCell {
+    grid-area: band;
+  }
+
+  .funnelCount {
+    grid-area: count;
+  }
+
+  .funnelValue {
+    display: none;
+  }
+
+  .funnelPct {
+    grid-area: pct;
+  }
+}

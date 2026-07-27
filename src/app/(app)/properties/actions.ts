@@ -75,6 +75,8 @@ function inputFromFormData(formData: FormData): PropertyInput {
     ownerEmail: String(formData.get("ownerEmail") ?? ""),
     ownerNotes: String(formData.get("ownerNotes") ?? ""),
     mapUrl: String(formData.get("mapUrl") ?? ""),
+    latitude: numberOrNull(formData.get("latitude")),
+    longitude: numberOrNull(formData.get("longitude")),
   };
 }
 

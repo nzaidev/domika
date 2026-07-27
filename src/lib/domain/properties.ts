@@ -184,7 +184,46 @@ export type PropertyInput = {
   ownerEmail?: string | null;
   ownerNotes?: string | null;
   mapUrl?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 };
+
+// Pull coordinates out of a pasted Google Maps link. Handles the common
+// desktop/app URL shapes; short links (maps.app.goo.gl) carry no coords, so
+// they return null and we keep the URL only.
+export function parseLatLngFromMapUrl(
+  url: string | null | undefined,
+): { lat: number; lng: number } | null {
+  if (!url) {
+    return null;
+  }
+
+  const inRange = (lat: number, lng: number) =>
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    Math.abs(lat) <= 90 &&
+    Math.abs(lng) <= 180;
+
+  const patterns = [
+    /@(-?\d+\.\d+),(-?\d+\.\d+)/, // .../@-17.78,-63.18,15z
+    /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/, // ...!3d-17.78!4d-63.18
+    /[?&](?:q|query|ll|sll|center|destination)=(-?\d+\.\d+),(-?\d+\.\d+)/, // ?q=lat,lng
+    /(-?\d{1,2}\.\d{4,}),\s*(-?\d{1,3}\.\d{4,})/, // bare "lat, lng"
+  ];
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) {
+      const lat = Number(match[1]);
+      const lng = Number(match[2]);
+      if (inRange(lat, lng)) {
+        return { lat, lng };
+      }
+    }
+  }
+
+  return null;
+}
 
 export type PropertyMutationResult =
   | { ok: true; propertyId: string }
@@ -244,6 +283,16 @@ export async function setPropertyActive(
 }
 
 function propertyRowFromInput(input: PropertyInput) {
+  const mapUrl = input.mapUrl?.trim() || null;
+  // Prefer explicit coordinates; otherwise try to lift them off a pasted
+  // Google Maps link so a dropped pin becomes a precise map location.
+  const parsed =
+    input.latitude == null || input.longitude == null
+      ? parseLatLngFromMapUrl(mapUrl)
+      : null;
+  const latitude = input.latitude ?? parsed?.lat ?? null;
+  const longitude = input.longitude ?? parsed?.lng ?? null;
+
   return {
     title: input.title.trim(),
     description: input.description?.trim() || null,
@@ -268,7 +317,9 @@ function propertyRowFromInput(input: PropertyInput) {
     owner_phone: normalizePhone(input.ownerPhone),
     owner_email: input.ownerEmail?.trim().toLowerCase() || null,
     owner_notes: input.ownerNotes?.trim() || null,
-    map_url: input.mapUrl?.trim() || null,
+    map_url: mapUrl,
+    latitude,
+    longitude,
   };
 }
 

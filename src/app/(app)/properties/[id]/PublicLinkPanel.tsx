@@ -7,11 +7,15 @@ import { SocialShare } from "./SocialShare";
 export function PublicLinkPanel({
   propertyId,
   propertyTitle,
+  propertySubtitle,
+  shareImagePath,
   active,
   publicUrl,
 }: {
   propertyId: string;
   propertyTitle: string;
+  propertySubtitle?: string;
+  shareImagePath?: string | null;
   active: boolean;
   publicUrl: string | null;
 }) {
@@ -42,7 +46,12 @@ export function PublicLinkPanel({
               {publicUrl}
             </a>
           </p>
-          <SocialShare url={publicUrl} title={propertyTitle} />
+          <SocialShare
+            url={publicUrl}
+            title={propertyTitle}
+            subtitle={propertySubtitle}
+            imagePath={shareImagePath}
+          />
         </>
       ) : (
         <p className={styles.mutedText}>

@@ -108,6 +108,19 @@ export default async function PropertyDetailPage({
     ? (property.amenities as string[])
     : [];
 
+  // Cover photo (served same-origin so the Instagram Web Share fetch isn't
+  // blocked by cross-origin rules) + a caption line for social posts.
+  const coverMedia = media.find((item) => item.is_cover) ?? media[0] ?? null;
+  const shareImagePath = coverMedia
+    ? `/api/media/${coverMedia.storage_path}`
+    : null;
+  const shareSubtitle = [
+    formatPrice(property.price, property.currency),
+    [property.zone, property.city].filter(Boolean).join(", "),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   const hasOwnerData = Boolean(
     property.owner_name ||
       property.owner_phone ||
@@ -230,6 +243,8 @@ export default async function PropertyDetailPage({
             <PublicLinkPanel
               propertyId={property.id}
               propertyTitle={property.title}
+              propertySubtitle={shareSubtitle}
+              shareImagePath={shareImagePath}
               active={collaboration.publicLinkActive}
               publicUrl={publicUrl}
             />

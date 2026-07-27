@@ -240,17 +240,51 @@ export function PropertyForm({ property }: { property?: PropertyRow }) {
 
       <label className={styles.formField}>
         <span>
-          Google Maps (URL) — opcional; si lo dejas vacío se usa la dirección
+          Google Maps (URL) — pega el enlace del pin y extraeremos las
+          coordenadas automáticamente
         </span>
         <input
           className={styles.textInput}
           name="mapUrl"
           type="url"
           defaultValue={property?.map_url ?? ""}
-          placeholder="https://maps.google.com/…"
+          placeholder="https://maps.google.com/…  o  https://maps.app.goo.gl/…"
           maxLength={500}
         />
+        <small className={styles.mutedText}>
+          En Google Maps: haz clic derecho sobre la ubicación → copia las
+          coordenadas, o usa “Compartir” y pega el enlace aquí.
+        </small>
       </label>
+
+      <div className={styles.formRow}>
+        <label className={styles.formField}>
+          <span>Latitud (opcional)</span>
+          <input
+            className={styles.textInput}
+            name="latitude"
+            type="number"
+            step="any"
+            min={-90}
+            max={90}
+            defaultValue={property?.latitude ?? ""}
+            placeholder="-17.783"
+          />
+        </label>
+        <label className={styles.formField}>
+          <span>Longitud (opcional)</span>
+          <input
+            className={styles.textInput}
+            name="longitude"
+            type="number"
+            step="any"
+            min={-180}
+            max={180}
+            defaultValue={property?.longitude ?? ""}
+            placeholder="-63.182"
+          />
+        </label>
+      </div>
 
       <div className={styles.formRow}>
         <label className={styles.formField}>

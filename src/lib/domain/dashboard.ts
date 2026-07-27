@@ -10,6 +10,7 @@ export type StageSummary = {
   id: string;
   name: string;
   count: number;
+  value: number;
   leads: Array<{ id: string; name: string; subtitle: string }>;
 };
 
@@ -122,7 +123,9 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
       .limit(6),
     supabase
       .from("leads")
-      .select("id, full_name, stage_id, source, desired_zone, created_at")
+      .select(
+        "id, full_name, stage_id, source, desired_zone, created_at, budget_min, budget_max",
+      )
       .eq("organization_id", organizationId)
       .order("created_at", { ascending: false })
       .limit(300),
@@ -225,10 +228,15 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
     })),
     stages: (stageRows.data ?? []).map((stage) => {
       const stageLeads = allLeads.filter((lead) => lead.stage_id === stage.id);
+      const value = stageLeads.reduce(
+        (sum, lead) => sum + (lead.budget_max ?? lead.budget_min ?? 0),
+        0,
+      );
       return {
         id: stage.id,
         name: stage.name,
         count: stageLeads.length,
+        value,
         leads: stageLeads.slice(0, 3).map((lead) => ({
           id: lead.id,
           name: lead.full_name,

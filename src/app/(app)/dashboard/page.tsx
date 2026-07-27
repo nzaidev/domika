@@ -10,6 +10,7 @@ import {
 import { getDashboardOverview } from "@/lib/domain/dashboard";
 import { setTaskStatusAction } from "@/app/(app)/tasks/actions";
 import { formatPrice, STATUS_LABELS } from "@/app/(app)/properties/labels";
+import { PipelineCard, type PipelineStage } from "./PipelineCard";
 
 export const dynamic = "force-dynamic";
 
@@ -21,20 +22,6 @@ const TASK_TYPE_LABELS: Record<string, string> = {
   meeting: "Reunión",
   other: "Otra",
 };
-
-// Stage palette — status colors only, matched by stage name.
-function stageColor(name: string): string {
-  const n = name.toLowerCase();
-  if (n.includes("nuevo")) return "var(--app-green)";
-  if (n.includes("contact")) return "var(--app-blue)";
-  if (n.includes("visita") || n.includes("cita")) return "var(--app-purple)";
-  if (n.includes("negoci") || n.includes("propuesta"))
-    return "var(--app-orange)";
-  if (n.includes("cierre") || n.includes("cerr") || n.includes("gan"))
-    return "var(--app-amber)";
-  if (n.includes("perdid") || n.includes("descart")) return "var(--app-slate)";
-  return "var(--app-green)";
-}
 
 // Green-family palette for the capture-channel donut (charts may use green;
 // stage colors stay reserved for status).
@@ -131,45 +118,6 @@ function Donut({
   );
 }
 
-function AreaChart() {
-  // Decorative inventory trend (no time-series data source yet).
-  const values = [30, 44, 39, 58, 54, 70, 66, 84, 92, 104];
-  const width = 320;
-  const height = 120;
-  const step = width / (values.length - 1);
-  const points = values.map((v, i) => [i * step, height - v] as const);
-  const line = points
-    .map(([x, y], i) => `${i === 0 ? "M" : "L"} ${x.toFixed(1)},${y.toFixed(1)}`)
-    .join(" ");
-  const area = `${line} L ${width},${height} L 0,${height} Z`;
-
-  return (
-    <svg
-      className={styles.areaChart}
-      viewBox={`0 0 ${width} ${height}`}
-      preserveAspectRatio="none"
-      role="img"
-      aria-label="Tendencia del inventario"
-    >
-      <defs>
-        <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#0e9f6e" stopOpacity="0.28" />
-          <stop offset="100%" stopColor="#0e9f6e" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={area} fill="url(#areaFill)" />
-      <path
-        d={line}
-        fill="none"
-        stroke="#0e9f6e"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 function SetupState() {
   return (
     <div className={styles.emptyState}>
@@ -256,6 +204,14 @@ export default async function DashboardPage() {
     },
   ];
 
+  const pipelineStages: PipelineStage[] = overview.stages.map((stage) => ({
+    id: stage.id,
+    name: stage.name,
+    count: stage.count,
+    value: stage.value,
+    firstLead: stage.leads[0]?.name ?? null,
+  }));
+
   const totalProspects = overview.leadSources.reduce(
     (sum, s) => sum + s.count,
     0,
@@ -325,46 +281,11 @@ export default async function DashboardPage() {
           </div>
         </section>
 
-        <section className={`${styles.panel} ${styles.pipelineCard}`}>
-          <div className={styles.sectionHeader}>
-            <div>
-              <span className={styles.eyebrow}>Pipeline</span>
-              <h2>Flujo de ventas</h2>
-            </div>
-            <Link className={styles.secondaryButton} href="/leads">
-              Ver pipeline
-            </Link>
-          </div>
-
-          <div className={styles.stageTileRow}>
-            {overview.stages.map((stage) => (
-              <Link
-                className={styles.stageTile}
-                href="/leads"
-                key={stage.id}
-                title={stage.name}
-              >
-                <div className={styles.stageTileName}>{stage.name}</div>
-                <div className={styles.stageTileCount}>{stage.count}</div>
-                <span className={styles.stageTileName2}>
-                  {stage.leads[0]?.name ?? "Sin prospectos"}
-                </span>
-                <div
-                  className={styles.stageBar}
-                  style={{ background: stageColor(stage.name) }}
-                />
-              </Link>
-            ))}
-          </div>
-
-          <div>
-            <span className={styles.eyebrow}>Valor de inventario</span>
-            <div className={styles.inventoryValue}>
-              {formatPrice(overview.inventory.value, overview.inventory.currency)}
-            </div>
-          </div>
-          <AreaChart />
-        </section>
+        <PipelineCard
+          stages={pipelineStages}
+          currency={overview.inventory.currency}
+          inventoryValue={overview.inventory.value}
+        />
       </div>
 
       {/* Bottom row: channels · tasks · featured */}

@@ -14,8 +14,9 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "project-files/**",
     "legacy/**",
-    // Local design reference dump (brand kit + mockups), not app source.
+    // Local design reference dumps (brand kit + mockups), not app source.
     "dashboard-redesign/**",
+    "funnel-view/**",
   ]),
 ]);
 
