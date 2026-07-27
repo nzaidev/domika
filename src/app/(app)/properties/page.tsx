@@ -10,6 +10,7 @@ import {
   formatPrice,
   OPERATION_LABELS,
   PROPERTY_TYPE_OPTIONS,
+  propertyHref,
   STATUS_LABELS,
 } from "./labels";
 
@@ -150,7 +151,7 @@ export default async function PropertiesPage({
           {list.properties.map((property) => (
             <Link
               className={styles.propertyCard}
-              href={`/properties/${property.id}`}
+              href={propertyHref(property)}
               key={property.id}
             >
               {property.coverUrl ? (

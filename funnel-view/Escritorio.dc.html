@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: #f6f8f7; font-family: 'Hanken Grotesk', sans-serif; color: #1a2b25; }
+  a { color: #0e8a5f; text-decoration: none; }
+  a:hover { color: #0a6b4a; text-decoration: underline; }
+  * { box-sizing: border-box; }
+</style>
+</helmet>
+<div style="display: flex; min-height: 100vh; background: #f6f8f7;">
+  <div style="width: 10px; background: #0d3b2e; flex-shrink: 0;"></div>
+  <div style="flex: 1; padding: 36px 44px; max-width: 1560px;">
+    <h1 style="margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.5px;">Escritorio</h1>
+    <p style="margin: 6px 0 24px; font-size: 15px; color: #5c6f68;">Resumen de prospectos, inventario y tareas de tu operación.</p>
+
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 24px;">
+      <sc-for list="{{ statCards }}" as="s" hint-placeholder-count="4">
+        <div style="background: #ffffff; border: 1px solid #e6ece9; border-radius: 14px; padding: 20px 22px; display: flex; gap: 16px; align-items: flex-start;">
+          <div style="width: 44px; height: 44px; border-radius: 12px; background: #e7f4ee; display: flex; align-items: center; justify-content: center; color: #0e8a5f; flex-shrink: 0;">
+            <span style="font-size: 20px; line-height: 1;">{{ s.icon }}</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <div style="font-size: 14px; color: #44554e;">{{ s.label }}</div>
+            <div style="font-size: 26px; font-weight: 800; line-height: 1.1;">{{ s.value }}</div>
+            <a href="#" style="font-size: 13.5px; font-weight: 600; color: #0e8a5f; margin-top: 4px;">{{ s.link }} →</a>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 400px 1fr; gap: 24px; margin-bottom: 24px; align-items: stretch;">
+      <div style="background: linear-gradient(160deg, #17936a 0%, #0d6e4e 60%, #0a5c41 100%); border-radius: 18px; padding: 30px 30px 26px; color: #ffffff; display: flex; flex-direction: column;">
+        <div style="font-size: 18px;">Buenas tardes,</div>
+        <div style="font-size: 44px; font-weight: 800; letter-spacing: -1px; line-height: 1.05; margin: 2px 0 10px;">Nick 👋</div>
+        <div style="font-size: 15.5px; font-style: italic; line-height: 1.5; opacity: 0.95; max-width: 300px;">Cada conversación es una oportunidad. Hoy es un gran día para hacer seguimiento y cerrar. 🔥</div>
+        <div style="flex: 1;"></div>
+        <div style="display: flex; gap: 24px; border-top: 1px solid rgba(255,255,255,0.25); padding-top: 18px; margin-top: 28px;">
+          <div style="flex: 1;">
+            <div style="font-size: 11.5px; letter-spacing: 1.2px; font-weight: 700; opacity: 0.8;">PROSPECTOS</div>
+            <div style="font-size: 30px; font-weight: 800; margin-top: 4px;">2</div>
+            <div style="font-size: 13.5px; opacity: 0.85;">en el pipeline</div>
+          </div>
+          <div style="width: 1px; background: rgba(255,255,255,0.25);"></div>
+          <div style="flex: 1.4;">
+            <div style="font-size: 11.5px; letter-spacing: 1.2px; font-weight: 700; opacity: 0.8;">INVENTARIO</div>
+            <div style="font-size: 30px; font-weight: 800; margin-top: 4px;">$320,000</div>
+            <div style="font-size: 13.5px; opacity: 0.85;">2 propiedades</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="background: #ffffff; border: 1px solid #e6ece9; border-radius: 18px; padding: 26px 30px; display: flex; flex-direction: column;">
+        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;">
+          <div>
+            <div style="font-size: 12px; letter-spacing: 1.4px; font-weight: 700; color: #0e8a5f;">PIPELINE</div>
+            <div style="font-size: 24px; font-weight: 800; letter-spacing: -0.4px; margin-top: 2px;">Flujo de ventas</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="display: flex; background: #eef3f0; border-radius: 10px; padding: 3px;">
+              <button onClick="{{ showStages }}" style="{{ stagesBtnStyle }}">Etapas</button>
+              <button onClick="{{ showFunnel }}" style="{{ funnelBtnStyle }}">Embudo</button>
+            </div>
+            <button style="background: #ffffff; border: 1px solid #dde5e1; border-radius: 10px; padding: 9px 18px; font-family: 'Hanken Grotesk', sans-serif; font-size: 14px; font-weight: 700; color: #1a2b25; cursor: pointer;" style-hover="background: #f2f6f4;">Ver pipeline</button>
+          </div>
+        </div>
+
+        <sc-if value="{{ isStages }}" hint-placeholder-val="{{ true }}">
+          <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-top: 20px;">
+            <sc-for list="{{ stages }}" as="st" hint-placeholder-count="6">
+              <div style="background: #f7faf8; border: 1px solid #e6ece9; border-radius: 12px; padding: 14px 14px 12px; border-bottom: 3px solid {{ st.color }};">
+                <div style="font-size: 14px; color: #44554e;">{{ st.name }}</div>
+                <div style="font-size: 26px; font-weight: 800; margin: 2px 0;">{{ st.count }}</div>
+                <div style="font-size: 12.5px; color: #7b8b84; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ st.sub }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="margin-top: 22px;">
+            <div style="font-size: 12px; letter-spacing: 1.4px; font-weight: 700; color: #0e8a5f;">VALOR DE INVENTARIO</div>
+            <div style="font-size: 34px; font-weight: 800; color: #0d6e4e; margin-top: 2px;">$320,000</div>
+          </div>
+          <div style="flex: 1; min-height: 120px; margin-top: 10px;">{{ areaChart }}</div>
+        </sc-if>
+
+        <sc-if value="{{ isFunnel }}" hint-placeholder-val="{{ false }}">
+          <div style="display: grid; grid-template-columns: 300px 90px 130px 1fr 52px; gap: 0 22px; align-items: center; margin-top: 18px;">
+            <div></div>
+            <div style="font-size: 13.5px; color: #5c6f68; text-align: center;">Clientes</div>
+            <div style="font-size: 13.5px; color: #5c6f68;">Valor estimado</div>
+            <div></div><div></div>
+            <sc-for list="{{ funnelRows }}" as="f" hint-placeholder-count="5">
+              <div style="display: flex; justify-content: center; padding: 2px 0;">
+                <div style="width: {{ f.topW }}; height: 52px; background: {{ f.color }}; clip-path: {{ f.clip }}; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #ffffff;">
+                  <div style="font-size: 14px; font-weight: 700;">{{ f.name }}</div>
+                  <div style="font-size: 13px; font-weight: 600; opacity: 0.95;">{{ f.count }}</div>
+                </div>
+              </div>
+              <div style="font-size: 17px; font-weight: 800; text-align: center; border-top: 1px solid #eef2f0; padding: 14px 0;">{{ f.count }}</div>
+              <div style="font-size: 15px; color: #33453e; border-top: 1px solid #eef2f0; padding: 14px 0;">{{ f.value }}</div>
+              <div style="border-top: 1px solid #eef2f0; padding: 14px 0;">
+                <div style="height: 6px; border-radius: 99px; background: #edf1ef; overflow: hidden;">
+                  <div style="height: 100%; width: {{ f.pctW }}; background: {{ f.color }}; border-radius: 99px;"></div>
+                </div>
+              </div>
+              <div style="font-size: 14.5px; font-weight: 700; color: #33453e; text-align: right; border-top: 1px solid #eef2f0; padding: 14px 0;">{{ f.pct }}</div>
+            </sc-for>
+          </div>
+          <div style="display: flex; align-items: center; justify-content: space-between; background: #eef7f2; border-radius: 12px; padding: 16px 22px; margin-top: 18px;">
+            <div>
+              <div style="font-size: 14px; color: #44554e;">Conversión total</div>
+              <div style="font-size: 19px; font-weight: 800;">{{ conversion }}</div>
+            </div>
+            <div style="display: flex; align-items: baseline; gap: 14px;">
+              <div style="font-size: 14px; color: #44554e;">Valor total del pipeline</div>
+              <div style="font-size: 26px; font-weight: 800; color: #0d6e4e;">$320,000</div>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px;">
+      <div style="background: #ffffff; border: 1px solid #e6ece9; border-radius: 18px; padding: 26px 28px;">
+        <div style="font-size: 12px; letter-spacing: 1.4px; font-weight: 700; color: #0e8a5f;">ORIGEN</div>
+        <div style="font-size: 22px; font-weight: 800; letter-spacing: -0.3px; margin-top: 2px;">Canales de captación</div>
+        <div style="display: flex; align-items: center; gap: 26px; margin-top: 24px;">
+          <div style="position: relative; width: 150px; height: 150px; flex-shrink: 0;">{{ donut }}
+            <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+              <div style="font-size: 30px; font-weight: 800; line-height: 1;">2</div>
+              <div style="font-size: 10.5px; letter-spacing: 1px; font-weight: 700; color: #5c6f68; margin-top: 3px;">PROSPECTOS</div>
+            </div>
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 12px;">
+            <sc-for list="{{ sources }}" as="src" hint-placeholder-count="1">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="width: 10px; height: 10px; border-radius: 99px; background: {{ src.color }};"></span>
+                <span style="font-size: 15px; font-weight: 600; flex: 1;">{{ src.name }}</span>
+                <span style="font-size: 15px; font-weight: 700; color: #33453e;">{{ src.pct }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <div style="background: #ffffff; border: 1px solid #e6ece9; border-radius: 18px; padding: 26px 28px; display: flex; flex-direction: column;">
+        <div style="display: flex; align-items: flex-start; justify-content: space-between;">
+          <div>
+            <div style="font-size: 12px; letter-spacing: 1.4px; font-weight: 700; color: #0e8a5f;">TAREAS</div>
+            <div style="font-size: 22px; font-weight: 800; letter-spacing: -0.3px; margin-top: 2px;">Próximas acciones</div>
+          </div>
+          <button style="background: #ffffff; border: 1px solid #dde5e1; border-radius: 10px; padding: 9px 18px; font-family: 'Hanken Grotesk', sans-serif; font-size: 14px; font-weight: 700; color: #1a2b25; cursor: pointer;" style-hover="background: #f2f6f4;">Ver agenda</button>
+        </div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px 10px;">
+          <div style="width: 52px; height: 52px; border-radius: 14px; background: #e7f4ee; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #0e8a5f;">✓</div>
+          <div style="font-size: 18px; font-weight: 800; margin-top: 14px;">Todo al día</div>
+          <div style="font-size: 14.5px; color: #5c6f68; line-height: 1.5; margin-top: 8px; max-width: 300px;">No tienes tareas pendientes. Crea una para no perder seguimiento.</div>
+          <button style="background: #0e8a5f; border: none; border-radius: 10px; padding: 12px 24px; font-family: 'Hanken Grotesk', sans-serif; font-size: 14.5px; font-weight: 700; color: #ffffff; cursor: pointer; margin-top: 18px;" style-hover="background: #0a6b4a;">Crear tarea</button>
+        </div>
+      </div>
+
+      <div style="background: #ffffff; border: 1px solid #e6ece9; border-radius: 18px; padding: 26px 28px;">
+        <div style="display: flex; align-items: flex-start; justify-content: space-between;">
+          <div>
+            <div style="font-size: 12px; letter-spacing: 1.4px; font-weight: 700; color: #0e8a5f;">INVENTARIO</div>
+            <div style="font-size: 22px; font-weight: 800; letter-spacing: -0.3px; margin-top: 2px;">Propiedades listas para mover</div>
+          </div>
+          <button style="background: #ffffff; border: 1px solid #dde5e1; border-radius: 10px; padding: 9px 18px; font-family: 'Hanken Grotesk', sans-serif; font-size: 14px; font-weight: 700; color: #1a2b25; cursor: pointer; flex-shrink: 0;" style-hover="background: #f2f6f4;">Ver todo</button>
+        </div>
+        <div style="margin-top: 20px; border-radius: 14px; overflow: hidden; background: #e6ece9; height: 210px; display: flex; align-items: center; justify-content: center; color: #7b8b84; font-size: 14px;">Foto de la propiedad</div>
+        <div style="font-size: 18px; font-weight: 800; margin-top: 16px;">Casa zona Alemana</div>
+        <div style="font-size: 14.5px; color: #5c6f68; margin-top: 4px;">Alemana, Santa Cruz</div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;defaultView&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;etapas&quot;,&quot;embudo&quot;],&quot;default&quot;:&quot;etapas&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Pipeline&quot;}}">
+class Component extends DCLogic {
+  state = { view: this.props.defaultView ?? 'etapas' };
+  renderVals() {
+    const view = this.state.view;
+    const btn = (active) => `appearance:none;border:none;border-radius:8px;padding:8px 16px;font-family:'Hanken Grotesk',sans-serif;font-size:14px;font-weight:700;cursor:pointer;` +
+      (active ? 'background:#ffffff;color:#0d6e4e;box-shadow:0 1px 3px rgba(13,59,46,0.15);' : 'background:transparent;color:#5c6f68;');
+    const palette = { Nuevo: '#3E7BC0', Contactado: '#5BA3D9', Visito: '#7C6BC4', Negociacion: '#D4589E', Cierre: '#E8874A', Perdido: '#9AA6A0' };
+    const data = [
+      { name: 'Nuevo', count: 1, sub: 'Nicolas Zarzycki', value: '$160,000' },
+      { name: 'Contactado', count: 1, sub: 'Patricia Gomez', value: '$160,000' },
+      { name: 'Visito', count: 0, sub: 'Sin prospectos', value: '—' },
+      { name: 'Negociacion', count: 0, sub: 'Sin prospectos', value: '—' },
+      { name: 'Cierre', count: 0, sub: 'Sin prospectos', value: '—' },
+      { name: 'Perdido', count: 0, sub: 'Sin prospectos', value: '—' },
+    ];
+    const stages = data.map(d => ({ ...d, color: palette[d.name] }));
+    // Funnel excludes Perdido; widths taper down the funnel with a floor so empty stages stay visible
+    const fun = data.slice(0, 5);
+    const total = 2;
+    const widths = [100, 84, 68, 52, 36, 24];
+    const funnelRows = fun.map((d, i) => {
+      const topW = widths[i], botW = widths[i + 1];
+      const inset = ((topW - botW) / 2 / topW) * 100;
+      return {
+        name: d.name, count: d.count, value: d.value, color: palette[d.name],
+        topW: topW + '%',
+        clip: `polygon(0% 0%, 100% 0%, ${100 - inset}% 100%, ${inset}% 100%)`,
+        pct: Math.round((d.count / total) * 100) + '%',
+        pctW: Math.max(d.count / total * 100, d.count > 0 ? 6 : 0) + '%',
+      };
+    });
+    const areaChart = React.createElement('svg', { viewBox: '0 0 600 130', preserveAspectRatio: 'none', style: { width: '100%', height: '100%', display: 'block' } },
+      React.createElement('defs', null, React.createElement('linearGradient', { id: 'ag', x1: 0, y1: 0, x2: 0, y2: 1 },
+        React.createElement('stop', { offset: '0%', stopColor: '#17936a', stopOpacity: 0.25 }),
+        React.createElement('stop', { offset: '100%', stopColor: '#17936a', stopOpacity: 0 }))),
+      React.createElement('path', { d: 'M0,110 L60,98 L120,102 L180,88 L240,92 L300,74 L360,78 L420,58 L480,46 L540,34 L600,24 L600,130 L0,130 Z', fill: 'url(#ag)' }),
+      React.createElement('path', { d: 'M0,110 L60,98 L120,102 L180,88 L240,92 L300,74 L360,78 L420,58 L480,46 L540,34 L600,24', fill: 'none', stroke: '#0e8a5f', strokeWidth: 2.5 }));
+    const donut = React.createElement('svg', { viewBox: '0 0 150 150', style: { width: '100%', height: '100%' } },
+      React.createElement('circle', { cx: 75, cy: 75, r: 62, fill: 'none', stroke: '#0e8a5f', strokeWidth: 16 }));
+    return {
+      isStages: view === 'etapas', isFunnel: view === 'embudo',
+      showStages: () => this.setState({ view: 'etapas' }),
+      showFunnel: () => this.setState({ view: 'embudo' }),
+      stagesBtnStyle: btn(view === 'etapas'), funnelBtnStyle: btn(view === 'embudo'),
+      stages, funnelRows, conversion: '0%',
+      sources: [{ name: 'Manual', color: '#0e8a5f', pct: '100%' }],
+      statCards: [
+        { icon: '👥', label: 'Prospectos', value: '2', link: 'Ver prospectos' },
+        { icon: '🏢', label: 'Propiedades', value: '2', link: 'Ver propiedades' },
+        { icon: '📢', label: 'Propiedades publicadas', value: '3', link: 'Ver publicaciones' },
+        { icon: '☑️', label: 'Tareas abiertas', value: '0', link: 'Ver tareas' },
+      ],
+      areaChart, donut,
+    };
+  }
+}
+</script>
+</body>
+</html>

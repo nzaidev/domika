@@ -9,7 +9,11 @@ import {
 } from "@/components/domika/icons";
 import { getDashboardOverview } from "@/lib/domain/dashboard";
 import { setTaskStatusAction } from "@/app/(app)/tasks/actions";
-import { formatPrice, STATUS_LABELS } from "@/app/(app)/properties/labels";
+import {
+  formatPrice,
+  propertyHref,
+  STATUS_LABELS,
+} from "@/app/(app)/properties/labels";
 import { PipelineCard, type PipelineStage } from "./PipelineCard";
 
 export const dynamic = "force-dynamic";
@@ -415,7 +419,7 @@ export default async function DashboardPage() {
               {overview.recentProperties.map((property) => (
                 <Link
                   className={styles.featuredCard}
-                  href={`/properties/${property.id}`}
+                  href={propertyHref(property)}
                   key={property.id}
                 >
                   {property.coverUrl ? (

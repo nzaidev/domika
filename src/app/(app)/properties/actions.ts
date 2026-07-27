@@ -17,8 +17,9 @@ import {
 export type PropertyFormState = {
   error: string | null;
   // Set on success; the client uploads staged photos (create flow) and then
-  // navigates to the property page.
+  // navigates to the property page (by slug when available).
   propertyId: string | null;
+  slug: string | null;
 };
 
 function numberOrNull(value: FormDataEntryValue | null): number | null {
@@ -109,14 +110,18 @@ export async function savePropertyAction(
     : await createProperty(input);
 
   if (result.ok === false) {
-    return { error: result.error, propertyId: null };
+    return { error: result.error, propertyId: null, slug: null };
   }
 
   revalidatePath("/properties");
   revalidatePath(`/properties/${result.propertyId}`);
   revalidatePath("/dashboard");
 
-  return { error: null, propertyId: result.propertyId };
+  return {
+    error: null,
+    propertyId: result.propertyId,
+    slug: result.slug ?? null,
+  };
 }
 
 export type DeletePropertyFormState = {

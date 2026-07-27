@@ -30,6 +30,19 @@ function leadSubtitle(lead: LeadRow) {
   return parts.join(" · ");
 }
 
+// Presupuesto shown on the card: a single figure, or a min–max range.
+function formatBudget(lead: LeadRow): string | null {
+  const { budget_min: min, budget_max: max } = lead;
+  if (min == null && max == null) {
+    return null;
+  }
+  const fmt = (value: number) => `$${Math.round(value).toLocaleString("en-US")}`;
+  if (min != null && max != null && min !== max) {
+    return `${fmt(min)} – ${fmt(max)}`;
+  }
+  return fmt((max ?? min) as number);
+}
+
 type Move = { leadId: string; toStageId: string };
 
 function applyMove(stages: LeadsBoardStage[], move: Move): LeadsBoardStage[] {
@@ -143,6 +156,12 @@ export function LeadsBoard({ stages }: { stages: LeadsBoardStage[] }) {
                 >
                   <strong>{lead.full_name}</strong>
                   <small>{leadSubtitle(lead)}</small>
+                  {formatBudget(lead) ? (
+                    <span className={styles.leadBudget}>
+                      <span className={styles.leadBudgetLabel}>Presupuesto</span>
+                      <strong>{formatBudget(lead)}</strong>
+                    </span>
+                  ) : null}
                   {lead.tags?.length ? (
                     <span className={styles.tagList}>
                       {lead.tags.map((tag) => (

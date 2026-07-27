@@ -1707,6 +1707,75 @@ a.propertyCard:hover {
   width: 100%;
 }
 
+.brochurePhotoGrid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+}
+
+.brochurePhotoTile {
+  background: #ffffff;
+  border: 1px solid var(--app-soft);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.brochurePhotoTile img {
+  aspect-ratio: 4 / 3;
+  display: block;
+  object-fit: cover;
+  width: 100%;
+}
+
+.brochurePhotoActions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+}
+
+.brochurePhotoLabel {
+  align-items: center;
+  display: flex;
+  font-size: 12px;
+  gap: 6px;
+}
+
+.brochurePreviewMock {
+  background: #ffffff;
+  border: 1px solid var(--app-soft);
+  border-left-width: 4px;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.brochurePreviewBanner {
+  align-items: center;
+  border-radius: 6px;
+  color: #ffffff;
+  display: flex;
+  font-size: 14px;
+  font-weight: 600;
+  gap: 10px;
+  margin-bottom: 8px;
+  min-height: 48px;
+  padding: 8px 12px;
+}
+
+.brochurePreviewLogo {
+  border-radius: 4px;
+  height: 32px;
+  object-fit: contain;
+  width: 32px;
+}
+
+.checkboxField {
+  align-items: center;
+  display: flex;
+  font-size: 14px;
+  gap: 8px;
+}
+
 .dangerButton {
   background: var(--app-coral);
   border: none;
@@ -2045,6 +2114,28 @@ a.propertyCard:hover {
 .leadTagsBlock {
   display: grid;
   gap: 8px;
+}
+
+/* Presupuesto figure on kanban lead cards. */
+.leadBudget {
+  align-items: baseline;
+  display: flex;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.leadBudgetLabel {
+  color: var(--app-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.leadBudget strong {
+  color: var(--app-green-deep);
+  font-size: 14px;
+  font-weight: 800;
 }
 
 .tagAddRow {

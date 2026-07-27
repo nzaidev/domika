@@ -66,6 +66,7 @@ export default async function BrochuresPage({
               properties={overview.properties}
               templates={overview.templates}
               defaultPropertyId={defaultPropertyId}
+              branding={overview.branding}
             />
           ) : (
             <p className={styles.mutedText}>

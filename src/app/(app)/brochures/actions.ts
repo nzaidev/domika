@@ -19,8 +19,10 @@ export type BrochureStudioState = {
 
 function layoutFromFormData(formData: FormData) {
   return sanitizeLayout({
-    format: String(formData.get("format") ?? "pdf") as BrochureFormat,
+    format: String(formData.get("format") ?? "flyer") as BrochureFormat,
     sections: formData.getAll("sections").map(String) as BrochureSection[],
+    qrListing: formData.get("qrListing") === "on",
+    qrWhatsapp: formData.get("qrWhatsapp") === "on",
   });
 }
 
@@ -61,6 +63,9 @@ export async function generateBrochureAction(
     };
   }
 
+  const heroMediaId = String(formData.get("heroMediaId") ?? "") || null;
+  const stripMediaIds = formData.getAll("stripMediaIds").map(String);
+
   const headerList = await headers();
   const host = headerList.get("host");
   const protocol = headerList.get("x-forwarded-proto") ?? "https";
@@ -71,6 +76,8 @@ export async function generateBrochureAction(
     layout,
     templateId: String(formData.get("templateId") ?? "") || null,
     baseUrl,
+    heroMediaId,
+    stripMediaIds,
   });
 
   if (result.ok === false) {

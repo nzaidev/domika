@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/domika/AppWidgets";
 import styles from "@/components/domika/domika-app.module.css";
 import { getPropertyDetail } from "@/lib/domain/properties";
 import { getSessionProfile } from "@/lib/auth/session";
+import { propertyHref } from "../../labels";
 import { PropertyForm } from "../../PropertyForm";
 import { PhotoManager } from "../PhotoManager";
 import { DeletePropertyButton } from "../DeletePropertyButton";
@@ -20,6 +21,15 @@ export default async function EditPropertyPage({
     getPropertyDetail(id),
     getSessionProfile(),
   ]);
+
+  // Canonicalize legacy UUID links to the clean slug URL.
+  if (
+    detail.status === "ready" &&
+    detail.property.slug &&
+    id !== detail.property.slug
+  ) {
+    redirect(`${propertyHref(detail.property)}/edit`);
+  }
 
   if (detail.status === "not_configured") {
     return (
@@ -52,7 +62,7 @@ export default async function EditPropertyPage({
         actions={
           <Link
             className={styles.secondaryButton}
-            href={`/properties/${detail.property.id}`}
+            href={propertyHref(detail.property)}
           >
             ← Ver propiedad
           </Link>

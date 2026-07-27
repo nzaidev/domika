@@ -222,6 +222,7 @@ export type PropertyRow = {
   created_by: string | null;
   assigned_to: string | null;
   title: string;
+  slug: string | null;
   description: string | null;
   property_type: string;
   operation: "sale" | "rent" | "investment";

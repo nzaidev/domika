@@ -123,7 +123,7 @@ export type PropertyDetail =
   | { status: "ready"; property: PropertyRow; media: PropertyMediaRow[] };
 
 export async function getPropertyDetail(
-  propertyId: string,
+  handle: string,
 ): Promise<PropertyDetail> {
   const session = await getSessionProfile();
 
@@ -134,12 +134,15 @@ export async function getPropertyDetail(
   const organizationId = session.profile.organization_id;
   const supabase = createAdminSupabaseClient();
 
-  const { data: property } = await supabase
+  // Resolve by canonical slug, or by raw UUID for legacy links/bookmarks.
+  const lookup = supabase
     .from("properties")
     .select("*")
-    .eq("id", propertyId)
-    .eq("organization_id", organizationId)
-    .maybeSingle();
+    .eq("organization_id", organizationId);
+  const { data: property } = await (UUID_RE.test(handle)
+    ? lookup.eq("id", handle)
+    : lookup.eq("slug", handle)
+  ).maybeSingle();
 
   if (!property) {
     return { status: "not_found" };
@@ -149,7 +152,7 @@ export async function getPropertyDetail(
     .from("property_media")
     .select("*")
     .eq("organization_id", organizationId)
-    .eq("property_id", propertyId)
+    .eq("property_id", property.id)
     .order("position", { ascending: true });
 
   if (error) {
@@ -226,8 +229,48 @@ export function parseLatLngFromMapUrl(
 }
 
 export type PropertyMutationResult =
-  | { ok: true; propertyId: string }
+  | { ok: true; propertyId: string; slug?: string | null }
   | { ok: false; error: string };
+
+// Canonical property URL slug — pure, accent-stripped title. Collisions get a
+// numeric suffix (see generateUniquePropertySlug); stays stable once assigned.
+export function slugifyTitle(title: string): string {
+  const base = title
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60)
+    .replace(/-+$/g, "");
+  return base || "propiedad";
+}
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function generateUniquePropertySlug(
+  supabase: ReturnType<typeof createAdminSupabaseClient>,
+  organizationId: string,
+  title: string,
+): Promise<string> {
+  const base = slugifyTitle(title);
+  const { data } = await supabase
+    .from("properties")
+    .select("slug")
+    .eq("organization_id", organizationId)
+    .like("slug", `${base}%`);
+
+  const taken = new Set((data ?? []).map((row) => row.slug));
+  if (!taken.has(base)) {
+    return base;
+  }
+  let n = 2;
+  while (taken.has(`${base}-${n}`)) {
+    n += 1;
+  }
+  return `${base}-${n}`;
+}
 
 const STATUS_ALERT_LABELS: Record<string, string> = {
   draft: "Borrador",
@@ -337,15 +380,21 @@ export async function createProperty(
   }
 
   const supabase = createAdminSupabaseClient();
+  const slug = await generateUniquePropertySlug(
+    supabase,
+    session.profile.organization_id,
+    input.title,
+  );
   const { data, error } = await supabase
     .from("properties")
     .insert({
       organization_id: session.profile.organization_id,
       created_by: session.profile.id,
       assigned_to: session.profile.id,
+      slug,
       ...propertyRowFromInput(input),
     })
-    .select("id")
+    .select("id, slug")
     .single();
 
   if (error || !data) {
@@ -354,7 +403,7 @@ export async function createProperty(
 
   await runMatchingForProperty(data.id);
 
-  return { ok: true, propertyId: data.id };
+  return { ok: true, propertyId: data.id, slug: data.slug };
 }
 
 export async function updateProperty(
@@ -387,7 +436,7 @@ export async function updateProperty(
     .update(propertyRowFromInput(input))
     .eq("id", propertyId)
     .eq("organization_id", organizationId)
-    .select("id")
+    .select("id, slug")
     .maybeSingle();
 
   if (error) {
@@ -425,7 +474,7 @@ export async function updateProperty(
     }
   }
 
-  return { ok: true, propertyId };
+  return { ok: true, propertyId, slug: data.slug };
 }
 
 export type DeletePropertyResult = { ok: true } | { ok: false; error: string };

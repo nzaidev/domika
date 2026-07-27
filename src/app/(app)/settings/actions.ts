@@ -126,6 +126,29 @@ export async function updateBrandingAction(
   }
 
   revalidatePath("/settings");
+  revalidatePath("/brochures");
+  return { error: null, saved: true };
+}
+
+export async function uploadLogoAction(
+  _previousState: AccountFormState,
+  formData: FormData,
+): Promise<AccountFormState> {
+  const { uploadOrganizationLogo } = await import("@/lib/domain/account");
+  const file = formData.get("logo");
+
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "Selecciona un archivo de logo.", saved: false };
+  }
+
+  const result = await uploadOrganizationLogo(file);
+
+  if (result.ok === false) {
+    return { error: result.error, saved: false };
+  }
+
+  revalidatePath("/settings");
+  revalidatePath("/brochures");
   return { error: null, saved: true };
 }
 

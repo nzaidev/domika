@@ -30,3 +30,12 @@ export function formatPrice(price: number | null, currency: string) {
   }
   return `${currency === "BOB" ? "Bs" : "$"}${Math.round(price).toLocaleString("en-US")}`;
 }
+
+// Canonical property URL. Prefers the human-readable slug; falls back to the
+// UUID (which the detail route also resolves) when a slug isn't loaded yet.
+export function propertyHref(property: {
+  slug?: string | null;
+  id: string;
+}): string {
+  return `/properties/${property.slug ?? property.id}`;
+}

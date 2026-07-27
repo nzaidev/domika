@@ -19,6 +19,7 @@ import { PublicLinkPanel } from "./PublicLinkPanel";
 import {
   formatPrice,
   OPERATION_LABELS,
+  propertyHref,
   STATUS_LABELS,
 } from "../labels";
 import { PropertyGallery } from "./PropertyGallery";
@@ -35,6 +36,16 @@ export default async function PropertyDetailPage({
 }) {
   const { id } = await params;
   const detail = await getPropertyDetail(id);
+
+  // Canonicalize: any legacy UUID link (tasks, network, notifications,
+  // bookmarks) redirects to the clean slug URL.
+  if (
+    detail.status === "ready" &&
+    detail.property.slug &&
+    id !== detail.property.slug
+  ) {
+    redirect(propertyHref(detail.property));
+  }
 
   if (detail.status === "not_configured") {
     return (
@@ -154,7 +165,7 @@ export default async function PropertyDetailPage({
             </Link>
             <Link
               className={styles.primaryButton}
-              href={`/properties/${property.id}/edit`}
+              href={`${propertyHref(property)}/edit`}
             >
               Editar ficha
             </Link>

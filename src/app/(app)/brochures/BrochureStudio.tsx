@@ -1,11 +1,12 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import styles from "@/components/domika/domika-app.module.css";
 import type { BrochureTemplateRow } from "@/lib/database.types";
 import {
   BROCHURE_SECTIONS,
   DEFAULT_LAYOUT,
+  MAX_GALLERY_PHOTOS,
   SECTION_LABELS,
   type BrochureSection,
 } from "@/lib/brochures/types";
@@ -21,14 +22,40 @@ const initialState: BrochureStudioState = {
   savedTemplate: null,
 };
 
+type PropertyMedia = {
+  id: string;
+  url: string;
+  isCover: boolean;
+  position: number;
+};
+
+type Branding = {
+  organizationName: string;
+  brandColor: string;
+  logoUrl: string | null;
+};
+
+function defaultHeroId(media: PropertyMedia[]): string {
+  return media.find((item) => item.isCover)?.id ?? media[0]?.id ?? "";
+}
+
+function defaultStripIds(media: PropertyMedia[], heroId: string): string[] {
+  return media
+    .filter((item) => item.id !== heroId)
+    .slice(0, MAX_GALLERY_PHOTOS)
+    .map((item) => item.id);
+}
+
 export function BrochureStudio({
   properties,
   templates,
   defaultPropertyId,
+  branding,
 }: {
   properties: Array<{ id: string; title: string }>;
   templates: BrochureTemplateRow[];
   defaultPropertyId?: string;
+  branding: Branding;
 }) {
   const [state, formAction, pending] = useActionState(
     generateBrochureAction,
@@ -38,6 +65,47 @@ export function BrochureStudio({
     DEFAULT_LAYOUT.sections,
   );
   const [templateId, setTemplateId] = useState("");
+  const [propertyId, setPropertyId] = useState(defaultPropertyId ?? "");
+  const [media, setMedia] = useState<PropertyMedia[]>([]);
+  const [mediaLoading, setMediaLoading] = useState(false);
+  const [heroMediaId, setHeroMediaId] = useState("");
+  const [stripMediaIds, setStripMediaIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!propertyId) {
+      setMedia([]);
+      setHeroMediaId("");
+      setStripMediaIds([]);
+      return;
+    }
+
+    let cancelled = false;
+    setMediaLoading(true);
+
+    fetch(`/api/brochures/properties/${propertyId}/media`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((payload: { media?: PropertyMedia[] } | null) => {
+        if (cancelled) {
+          return;
+        }
+        const rows = payload?.media ?? [];
+        setMedia(rows);
+        const hero = defaultHeroId(rows);
+        setHeroMediaId(hero);
+        setStripMediaIds(defaultStripIds(rows, hero));
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setMediaLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [propertyId]);
+
+  const stripSet = useMemo(() => new Set(stripMediaIds), [stripMediaIds]);
 
   function applyTemplate(id: string) {
     setTemplateId(id);
@@ -75,9 +143,44 @@ export function BrochureStudio({
     });
   }
 
+  function setHero(id: string) {
+    setHeroMediaId(id);
+    setStripMediaIds((current) => {
+      const withoutHero = current.filter((entry) => entry !== id);
+      if (withoutHero.length > 0) {
+        return withoutHero.slice(0, MAX_GALLERY_PHOTOS);
+      }
+      return defaultStripIds(media, id);
+    });
+  }
+
+  function toggleStrip(id: string) {
+    if (id === heroMediaId) {
+      return;
+    }
+    setStripMediaIds((current) => {
+      if (current.includes(id)) {
+        return current.filter((entry) => entry !== id);
+      }
+      if (current.length >= MAX_GALLERY_PHOTOS) {
+        return current;
+      }
+      return [...current, id];
+    });
+  }
+
+  const whatsappShareUrl =
+    state.url && state.format === "flyer"
+      ? `https://wa.me/?text=${encodeURIComponent(`Mira esta propiedad: ${state.url}`)}`
+      : null;
+
   return (
     <form className={styles.formGrid} action={formAction}>
       <input type="hidden" name="templateId" value={templateId} />
+      <input type="hidden" name="heroMediaId" value={heroMediaId} />
+      {stripMediaIds.map((id) => (
+        <input type="hidden" name="stripMediaIds" value={id} key={id} />
+      ))}
       {sections.map((section) => (
         <input type="hidden" name="sections" value={section} key={section} />
       ))}
@@ -88,7 +191,8 @@ export function BrochureStudio({
           <select
             className={styles.textInput}
             name="propertyId"
-            defaultValue={defaultPropertyId ?? ""}
+            value={propertyId}
+            onChange={(event) => setPropertyId(event.target.value)}
             required
           >
             <option value="" disabled>
@@ -103,10 +207,94 @@ export function BrochureStudio({
         </label>
         <label className={styles.formField}>
           <span>Formato</span>
-          <select className={styles.textInput} name="format" defaultValue="pdf">
-            <option value="pdf">Folleto PDF (A4)</option>
+          <select className={styles.textInput} name="format" defaultValue="flyer">
             <option value="flyer">Flyer WhatsApp (imagen vertical)</option>
+            <option value="pdf">Folleto PDF (A4)</option>
           </select>
+        </label>
+      </div>
+
+      {propertyId ? (
+        <div className={styles.formField}>
+          <span>Fotos del folleto</span>
+          {mediaLoading ? (
+            <p className={styles.mutedText}>Cargando fotos…</p>
+          ) : media.length > 0 ? (
+            <>
+              <p className={styles.mutedText}>
+                Elige la foto principal y hasta {MAX_GALLERY_PHOTOS} para la
+                franja inferior.
+              </p>
+              <div className={styles.brochurePhotoGrid}>
+                {media.map((item) => {
+                  const isHero = item.id === heroMediaId;
+                  const inStrip = stripSet.has(item.id);
+                  return (
+                    <div className={styles.brochurePhotoTile} key={item.id}>
+                      {/* eslint-disable-next-line @next/next/no-img-element -- property thumb */}
+                      <img src={item.url} alt="" />
+                      <div className={styles.brochurePhotoActions}>
+                        <label className={styles.brochurePhotoLabel}>
+                          <input
+                            type="radio"
+                            name="heroPick"
+                            checked={isHero}
+                            onChange={() => setHero(item.id)}
+                          />
+                          Portada
+                        </label>
+                        <label className={styles.brochurePhotoLabel}>
+                          <input
+                            type="checkbox"
+                            checked={inStrip}
+                            disabled={isHero}
+                            onChange={() => toggleStrip(item.id)}
+                          />
+                          Franja
+                        </label>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            <p className={styles.mutedText}>
+              Esta propiedad no tiene fotos — agrega imágenes en la ficha de la
+              propiedad.
+            </p>
+          )}
+        </div>
+      ) : null}
+
+      <div
+        className={styles.brochurePreviewMock}
+        style={{ borderColor: branding.brandColor }}
+      >
+        <div
+          className={styles.brochurePreviewBanner}
+          style={{ background: branding.brandColor }}
+        >
+          {branding.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={branding.logoUrl} alt="" className={styles.brochurePreviewLogo} />
+          ) : null}
+          <span>{branding.organizationName}</span>
+        </div>
+        <p className={styles.mutedText}>
+          Vista previa de marca — el folleto incluirá banner, franja de fotos y
+          códigos QR en el pie.
+        </p>
+      </div>
+
+      <div className={styles.formRow}>
+        <label className={styles.checkboxField}>
+          <input type="checkbox" name="qrListing" defaultChecked />
+          <span>QR con enlace a la ficha pública</span>
+        </label>
+        <label className={styles.checkboxField}>
+          <input type="checkbox" name="qrWhatsapp" defaultChecked />
+          <span>QR de WhatsApp (tu teléfono)</span>
         </label>
       </div>
 
@@ -227,14 +415,26 @@ export function BrochureStudio({
               className={styles.flyerPreview}
             />
           ) : null}
-          <a
-            className={styles.primaryButton}
-            href={state.url}
-            target="_blank"
-            rel="noreferrer"
-          >
-            {state.format === "flyer" ? "Abrir imagen" : "Abrir PDF"}
-          </a>
+          <div className={styles.formRow}>
+            <a
+              className={styles.primaryButton}
+              href={state.url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {state.format === "flyer" ? "Abrir imagen" : "Abrir PDF"}
+            </a>
+            {whatsappShareUrl ? (
+              <a
+                className={styles.secondaryButton}
+                href={whatsappShareUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Compartir por WhatsApp
+              </a>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
@@ -243,7 +443,7 @@ export function BrochureStudio({
         type="submit"
         name="intent"
         value="generate"
-        disabled={pending}
+        disabled={pending || !propertyId}
       >
         {pending ? "Generando…" : "Generar"}
       </button>

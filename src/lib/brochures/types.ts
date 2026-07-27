@@ -4,6 +4,7 @@
 
 export const BROCHURE_SECTIONS = [
   "cover",
+  "gallery",
   "price",
   "specs",
   "description",
@@ -18,10 +19,13 @@ export type BrochureFormat = "pdf" | "flyer";
 export type BrochureLayout = {
   format: BrochureFormat;
   sections: BrochureSection[];
+  qrListing?: boolean;
+  qrWhatsapp?: boolean;
 };
 
 export const SECTION_LABELS: Record<BrochureSection, string> = {
   cover: "Foto de portada",
+  gallery: "Galería de fotos",
   price: "Precio",
   specs: "Ficha técnica",
   description: "Descripción",
@@ -30,13 +34,25 @@ export const SECTION_LABELS: Record<BrochureSection, string> = {
 };
 
 export const DEFAULT_LAYOUT: BrochureLayout = {
-  format: "pdf",
-  sections: ["cover", "price", "specs", "description", "amenities", "agent"],
+  format: "flyer",
+  sections: [
+    "cover",
+    "gallery",
+    "price",
+    "specs",
+    "description",
+    "amenities",
+    "agent",
+  ],
+  qrListing: true,
+  qrWhatsapp: true,
 };
+
+export const MAX_GALLERY_PHOTOS = 12;
 
 export function sanitizeLayout(input: unknown): BrochureLayout {
   const raw = (input ?? {}) as Partial<BrochureLayout>;
-  const format: BrochureFormat = raw.format === "flyer" ? "flyer" : "pdf";
+  const format: BrochureFormat = raw.format === "pdf" ? "pdf" : "flyer";
   const sections = Array.isArray(raw.sections)
     ? (raw.sections.filter((section) =>
         BROCHURE_SECTIONS.includes(section as BrochureSection),
@@ -46,6 +62,8 @@ export function sanitizeLayout(input: unknown): BrochureLayout {
   return {
     format,
     sections: sections.length > 0 ? sections : DEFAULT_LAYOUT.sections,
+    qrListing: raw.qrListing !== false,
+    qrWhatsapp: raw.qrWhatsapp !== false,
   };
 }
 
@@ -62,5 +80,9 @@ export type BrochureData = {
   agentName: string;
   agentPhone: string | null;
   coverJpeg: Buffer | null;
+  logoJpeg: Buffer | null;
+  galleryJpegs: Buffer[];
   listingUrl: string | null;
+  listingQrPng: Buffer | null;
+  whatsappQrPng: Buffer | null;
 };

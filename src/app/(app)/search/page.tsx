@@ -4,7 +4,11 @@ import { PageHeader } from "@/components/domika/AppWidgets";
 import styles from "@/components/domika/domika-app.module.css";
 import { getLeadsBoard } from "@/lib/domain/leads";
 import { listProperties } from "@/lib/domain/properties";
-import { formatPrice, STATUS_LABELS } from "@/app/(app)/properties/labels";
+import {
+  formatPrice,
+  propertyHref,
+  STATUS_LABELS,
+} from "@/app/(app)/properties/labels";
 
 export const dynamic = "force-dynamic";
 
@@ -113,7 +117,7 @@ export default async function SearchPage({
                 {foundProperties.map((property) => (
                   <Link
                     className={styles.fieldRow}
-                    href={`/properties/${property.id}`}
+                    href={propertyHref(property)}
                     key={property.id}
                     style={{ textDecoration: "none", color: "inherit" }}
                   >

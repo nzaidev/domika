@@ -26,17 +26,22 @@ export async function createTagAction(
   return { error: null, created: true };
 }
 
-export async function updateTagAction(formData: FormData) {
+export async function updateTagAction(
+  formData: FormData,
+): Promise<{ error: string | null }> {
   const result = await updateTag({
     tagId: String(formData.get("tagId") ?? ""),
     name: String(formData.get("name") ?? ""),
     color: String(formData.get("color") ?? "#3B82F6"),
   });
 
-  if (result.ok) {
-    revalidatePath("/tags");
-    revalidatePath("/leads");
+  if (result.ok === false) {
+    return { error: result.error };
   }
+
+  revalidatePath("/tags");
+  revalidatePath("/leads");
+  return { error: null };
 }
 
 export async function deleteTagAction(formData: FormData) {

@@ -8,7 +8,11 @@ import { prepareImageForUpload } from "@/lib/image-client";
 import { savePropertyAction, type PropertyFormState } from "./actions";
 import { StagedPhotos, type StagedPhoto } from "./StagedPhotos";
 
-const initialState: PropertyFormState = { error: null, propertyId: null };
+const initialState: PropertyFormState = {
+  error: null,
+  propertyId: null,
+  slug: null,
+};
 
 const PROPERTY_TYPES = [
   "Casa",
@@ -48,6 +52,8 @@ export function PropertyForm({ property }: { property?: PropertyRow }) {
     finishedRef.current = true;
 
     const propertyId = state.propertyId;
+    // Navigate by canonical slug; the media API still keys off the UUID.
+    const handle = state.slug ?? propertyId;
 
     void (async () => {
       const errors: string[] = [];
@@ -95,13 +101,13 @@ export function PropertyForm({ property }: { property?: PropertyRow }) {
         // Land on the edit page so the user can retry the failed photos.
         setUploadErrors(errors);
         setUploadStatus(null);
-        router.push(`/properties/${propertyId}/edit`);
+        router.push(`/properties/${handle}/edit`);
       } else {
-        router.push(`/properties/${propertyId}`);
+        router.push(`/properties/${handle}`);
       }
       router.refresh();
     })();
-  }, [state.propertyId, staged, router]);
+  }, [state.propertyId, state.slug, staged, router]);
 
   const busy = pending || uploadStatus !== null;
 
