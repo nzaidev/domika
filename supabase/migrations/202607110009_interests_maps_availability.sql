@@ -12,9 +12,15 @@ alter table public.properties
   add column if not exists map_url text;
 
 -- Expose `active` through the owner-safe view so the network feed, public
--- pages, and matching can respect the availability toggle. (Recreating the
--- view keeps grants; re-assert security_invoker to be safe.)
-create or replace view public.properties_network_safe as
+-- pages, and matching can respect the availability toggle.
+--
+-- Must DROP + CREATE (not CREATE OR REPLACE): replace can only append columns
+-- at the end, and inserting `active` mid-list reads as a column rename.
+-- Nothing depends on this view (app reads it via the service-role client),
+-- so a drop is safe. Grants/options are re-applied below.
+drop view if exists public.properties_network_safe;
+
+create view public.properties_network_safe as
 select
   id, organization_id, created_by, assigned_to, title, description,
   property_type, operation, status, price, currency, city, zone,
