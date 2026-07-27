@@ -25,22 +25,31 @@ export async function fetchStorageBytes(
   publicUrl: string | null,
   supabase: SupabaseAdmin,
 ): Promise<ArrayBuffer | null> {
-  const url = publicUrl ?? mediaUrl(storagePath);
-  let bytes = await fetchUrlBytes(url);
+  // Try absolute URLs only — server-side fetch() can't resolve a relative
+  // "/api/media/..." path (which is what public_url is often stored as), so
+  // the R2 public URL from mediaUrl() is the one that actually works.
+  const candidates = [publicUrl, mediaUrl(storagePath)].filter(
+    (url): url is string => Boolean(url) && /^https?:\/\//.test(url as string),
+  );
 
-  if (!bytes && hasR2Config()) {
+  for (const url of candidates) {
+    const bytes = await fetchUrlBytes(url);
+    if (bytes) {
+      return bytes;
+    }
+  }
+
+  if (hasR2Config()) {
     const fromR2 = await r2Download(storagePath);
-    bytes = fromR2?.body ?? null;
+    if (fromR2?.body) {
+      return fromR2.body;
+    }
   }
 
-  if (!bytes) {
-    const { data: file } = await supabase.storage
-      .from("property-media")
-      .download(storagePath);
-    bytes = file ? await file.arrayBuffer() : null;
-  }
-
-  return bytes;
+  const { data: file } = await supabase.storage
+    .from("property-media")
+    .download(storagePath);
+  return file ? await file.arrayBuffer() : null;
 }
 
 export async function bytesToBrochureJpeg(bytes: ArrayBuffer): Promise<Buffer | null> {
