@@ -9,6 +9,7 @@ import { NoteForm, StageForm } from "./LeadDetailForms";
 import { EditLeadForm } from "./EditLeadForm";
 import { LeadTags } from "./LeadTags";
 import { LeadInterests } from "./LeadInterests";
+import { CaptureFromChat } from "./CaptureFromChat";
 
 export const dynamic = "force-dynamic";
 
@@ -136,64 +137,23 @@ export default async function LeadDetailPage({
                 </span>
               ) : null}
             </div>
-            {messages.length > 0 ? (
-              <div className={styles.chatList}>
-                {messages.map((message) => {
-                  const attachments = Array.isArray(message.media)
-                    ? (message.media as Array<Record<string, unknown>>).filter(
-                        (item) => typeof item.url === "string",
-                      )
-                    : [];
-
-                  return (
-                    <div
-                      className={`${styles.chatBubble} ${
-                        message.direction === "inbound"
-                          ? styles.chatInbound
-                          : styles.chatOutbound
-                      }`}
-                      key={message.id}
-                    >
-                      {attachments.map((item) =>
-                        String(item.mime_type ?? "").startsWith("image/") ? (
-                          <a
-                            href={item.url as string}
-                            target="_blank"
-                            rel="noreferrer"
-                            key={item.url as string}
-                          >
-                            {/* eslint-disable-next-line @next/next/no-img-element -- re-hosted whatsapp attachment */}
-                            <img
-                              src={item.url as string}
-                              alt="Adjunto de WhatsApp"
-                              className={styles.chatImage}
-                              loading="lazy"
-                            />
-                          </a>
-                        ) : (
-                          <a
-                            href={item.url as string}
-                            target="_blank"
-                            rel="noreferrer"
-                            key={item.url as string}
-                            className={styles.chatAttachment}
-                          >
-                            📎 {String(item.filename ?? "Adjunto")}
-                          </a>
-                        ),
-                      )}
-                      <p>{message.body}</p>
-                      <time>{formatDateTime(message.sent_at)}</time>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className={styles.mutedText}>
-                Cuando este contacto escriba al WhatsApp del equipo, la
-                conversación aparecerá aquí automáticamente.
-              </p>
-            )}
+            <CaptureFromChat
+              leadId={lead.id}
+              messages={messages.map((message) => ({
+                id: message.id,
+                direction: message.direction,
+                body: message.body,
+                sent_at: message.sent_at,
+                media: message.media,
+              }))}
+              lead={{
+                budget_min: lead.budget_min,
+                budget_max: lead.budget_max,
+                desired_zone: lead.desired_zone,
+                desired_property_type: lead.desired_property_type,
+                desired_operation: lead.desired_operation,
+              }}
+            />
           </section>
 
           <section className={styles.panel}>

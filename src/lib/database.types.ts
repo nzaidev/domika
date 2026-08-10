@@ -209,6 +209,7 @@ export type LeadRow = {
   business_unit: string;
   desired_property_type: string | null;
   desired_zone: string | null;
+  desired_operation: "buy" | "rent" | "invest" | null;
   budget_min: number | null;
   budget_max: number | null;
   notes: string | null;

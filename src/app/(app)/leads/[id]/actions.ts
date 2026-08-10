@@ -6,6 +6,12 @@ import {
   changeLeadStage,
   updateLead,
 } from "@/lib/domain/lead-detail";
+import {
+  applyLeadCaptures,
+  suggestLeadCaptures,
+  type ApplyCapturesInput,
+  type SuggestCapturesResult,
+} from "@/lib/domain/lead-capture";
 
 export type LeadDetailFormState = {
   error: string | null;
@@ -115,6 +121,31 @@ export async function unassignTagAction(formData: FormData) {
     revalidatePath(`/leads/${leadId}`);
     revalidatePath("/leads");
   }
+}
+
+// AI capture: read the WhatsApp conversation and propose lead fields.
+export async function suggestCapturesAction(
+  leadId: string,
+): Promise<SuggestCapturesResult> {
+  return suggestLeadCaptures(leadId);
+}
+
+// Write the fields the agent confirmed (from AI suggestions and/or manual
+// highlights) onto the lead.
+export async function applyCapturesAction(
+  leadId: string,
+  input: ApplyCapturesInput,
+): Promise<{ error: string | null }> {
+  const result = await applyLeadCaptures(leadId, input);
+
+  if (result.ok === false) {
+    return { error: result.error };
+  }
+
+  revalidatePath(`/leads/${leadId}`);
+  revalidatePath("/leads");
+  revalidatePath("/dashboard");
+  return { error: null };
 }
 
 export async function addLeadNoteAction(

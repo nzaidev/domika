@@ -1398,6 +1398,11 @@ a.leadCard:hover {
   outline: 2px solid var(--app-mint);
 }
 
+.stageFiltered {
+  border-color: var(--app-green-deep);
+  box-shadow: 0 0 0 2px rgba(14, 159, 110, 0.15);
+}
+
 a.leadCard[draggable="true"] {
   cursor: grab;
 }
@@ -2116,6 +2121,111 @@ a.propertyCard:hover {
   gap: 8px;
 }
 
+/* ============================================================
+   Capture lead info from WhatsApp (AI + highlight-to-add)
+   ============================================================ */
+
+.captureBar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.captureNotice {
+  background: var(--app-panel-strong);
+  border: 1px solid var(--app-soft);
+  border-radius: 8px;
+  color: var(--app-muted);
+  font-size: 13px;
+  margin: 0 0 8px;
+  padding: 8px 12px;
+}
+
+.captureTray {
+  background: var(--app-panel-strong);
+  border: 1px solid var(--app-soft);
+  border-radius: 12px;
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 14px;
+}
+
+.captureRow {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--app-soft);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto minmax(0, 1.2fr) minmax(0, 1fr) auto;
+  padding: 8px 10px;
+}
+
+.captureField {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.captureLabel {
+  align-items: center;
+  display: flex;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 6px;
+}
+
+.captureConfidence {
+  background: var(--app-mint);
+  border-radius: 999px;
+  color: var(--app-green-deep);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  text-transform: uppercase;
+}
+
+.captureEvidence {
+  color: var(--app-muted);
+  font-size: 12px;
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.captureTrayFoot {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.capturePopover {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--app-soft);
+  border-radius: 10px;
+  box-shadow: var(--shadow-panel);
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  position: fixed;
+  z-index: 50;
+}
+
+@media (max-width: 640px) {
+  .captureRow {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .captureRow .textInput {
+    grid-column: 1 / -1;
+  }
+}
+
 /* Presupuesto figure on kanban lead cards. */
 .leadBudget {
   align-items: baseline;
@@ -2388,6 +2498,13 @@ a.propertyCard:hover {
   overflow: hidden;
   padding: 12px 12px 0;
   text-decoration: none;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.stageTile:hover {
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(12, 58, 50, 0.08);
+  transform: translateY(-1px);
 }
 
 .stageTileName {
@@ -2634,6 +2751,22 @@ a.propertyCard:hover {
   display: grid;
   gap: 12px;
   grid-template-columns: minmax(0, 1.5fr) 52px minmax(96px, 0.9fr) minmax(110px, 1fr);
+}
+
+.funnelRowLink {
+  border-radius: 8px;
+  color: inherit;
+  display: block;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.funnelRowLink:hover {
+  background: var(--app-soft-2);
+}
+
+.funnelRowLink:hover .funnelBand {
+  filter: brightness(1.06);
 }
 
 .funnelHeadCell {
