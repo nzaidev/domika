@@ -30,6 +30,11 @@ export async function GET(request: NextRequest) {
   // Connection details come back as query params; field names aren't published,
   // so read the likely candidates.
   const q = request.nextUrl.searchParams;
+  // Log the real params so we can lock the field mapping on the first live connect.
+  console.log(
+    "[zernio callback] params:",
+    JSON.stringify(Object.fromEntries(q.entries())),
+  );
   const externalAccountId =
     q.get("accountId") ??
     q.get("account_id") ??
