@@ -10,6 +10,8 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { normalizePhone } from "@/lib/phone";
 import {
   hasZernioConfig,
+  listZernioConversations,
+  listZernioMessages,
   sendZernioMessage,
   type ZernioInboundMessage,
 } from "@/lib/integrations/zernio";
@@ -146,7 +148,13 @@ export async function getConversationsOverview(): Promise<ConversationsOverview>
   // owner column doesn't exist yet): my own conversations + unowned/legacy.
   const me = session.profile.id;
   const threads = (threadsRes.data ?? []).filter(
-    (t) => t.owner_profile_id == null || t.owner_profile_id === me,
+    (t) =>
+      (t.owner_profile_id == null || t.owner_profile_id === me) &&
+      // Hide the original demo/seed threads now that real chats sync in.
+      !(
+        typeof t.external_thread_id === "string" &&
+        t.external_thread_id.startsWith("zc_")
+      ),
   );
   const stats = await threadStats(
     supabase,
@@ -544,4 +552,130 @@ export async function ingestZernioInbound(
     .eq("organization_id", organizationId);
 
   return "stored";
+}
+
+// Pulls existing conversations + messages from Zernio into our inbox. The
+// webhook only delivers NEW inbound messages, so without this a freshly
+// connected number shows an empty inbox even though the history is already in
+// Zernio. Idempotent: threads keyed by (org, external_thread_id), messages by
+// (org, external_message_id). Scope to one org, or all connections when omitted.
+export async function syncZernioConversations(options?: {
+  organizationId?: string;
+  maxConversations?: number;
+}): Promise<{ threads: number; messages: number }> {
+  const profileId = process.env.ZERNIO_PROFILE_ID;
+  if (!profileId || !hasZernioConfig()) {
+    return { threads: 0, messages: 0 };
+  }
+  const supabase = createAdminSupabaseClient();
+
+  // Connected accounts → their owning org + agent, for attribution/isolation.
+  let query = supabase
+    .from("channel_connections")
+    .select("external_account_id, organization_id, connected_by")
+    .eq("provider", "zernio")
+    .eq("status", "active");
+  if (options?.organizationId) {
+    query = query.eq("organization_id", options.organizationId);
+  }
+  const { data: connections } = await query;
+  const acctMap = new Map<string, { org: string; owner: string | null }>();
+  for (const conn of connections ?? []) {
+    if (conn.external_account_id) {
+      acctMap.set(conn.external_account_id, {
+        org: conn.organization_id,
+        owner: conn.connected_by,
+      });
+    }
+  }
+  if (acctMap.size === 0) {
+    return { threads: 0, messages: 0 };
+  }
+
+  const conversations = await listZernioConversations(profileId);
+  const scoped = conversations
+    .filter((c) => c.accountId && acctMap.has(c.accountId))
+    .slice(0, options?.maxConversations ?? 100);
+
+  let threadCount = 0;
+  let messageCount = 0;
+
+  for (const conv of scoped) {
+    const target = acctMap.get(conv.accountId as string);
+    if (!target) continue;
+    const { org, owner } = target;
+
+    const { data: existing } = await supabase
+      .from("whatsapp_threads")
+      .select("id")
+      .eq("organization_id", org)
+      .eq("external_thread_id", conv.id)
+      .maybeSingle();
+
+    let threadId = existing?.id ?? null;
+    if (!threadId) {
+      const { data: created } = await supabase
+        .from("whatsapp_threads")
+        .insert({
+          organization_id: org,
+          channel: "whatsapp",
+          external_thread_id: conv.id,
+          contact_phone: conv.contactPhone ?? conv.id,
+          contact_name: conv.contactName,
+          last_message_at: conv.updatedTime,
+          owner_profile_id: owner,
+        })
+        .select("id")
+        .single();
+      threadId = created?.id ?? null;
+      if (threadId) threadCount += 1;
+    }
+    if (!threadId) continue;
+
+    const history = await listZernioMessages(conv.id, conv.accountId as string);
+    for (const msg of history) {
+      const { data: dupe } = await supabase
+        .from("whatsapp_messages")
+        .select("id")
+        .eq("organization_id", org)
+        .eq("external_message_id", msg.id)
+        .maybeSingle();
+      if (dupe) continue;
+      await supabase.from("whatsapp_messages").insert({
+        organization_id: org,
+        thread_id: threadId,
+        direction: msg.direction,
+        external_message_id: msg.id,
+        body: msg.body,
+        media: [],
+        sent_at: msg.sentAt,
+      });
+      messageCount += 1;
+    }
+
+    if (conv.updatedTime) {
+      await supabase
+        .from("whatsapp_threads")
+        .update({ last_message_at: conv.updatedTime })
+        .eq("id", threadId)
+        .eq("organization_id", org);
+    }
+  }
+
+  return { threads: threadCount, messages: messageCount };
+}
+
+// Session-scoped sync for the "Sincronizar" button: pulls the signed-in agent's
+// org conversations from Zernio.
+export async function syncMyConversations(): Promise<{
+  threads: number;
+  messages: number;
+}> {
+  const session = await getSessionProfile();
+  if (session.status !== "authenticated") {
+    return { threads: 0, messages: 0 };
+  }
+  return syncZernioConversations({
+    organizationId: session.profile.organization_id,
+  });
 }

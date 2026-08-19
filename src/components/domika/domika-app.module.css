@@ -3011,7 +3011,10 @@ a.propertyCard:hover {
 }
 
 .inboxSearchRow {
+  align-items: center;
   border-bottom: 1px solid var(--app-soft-2);
+  display: flex;
+  gap: 8px;
   padding: 10px 12px;
 }
 
@@ -3363,6 +3366,59 @@ a.propertyCard:hover {
   align-items: center;
   color: #25d366;
   display: inline-flex;
+}
+
+.syncBtn {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--app-soft);
+  border-radius: 10px;
+  color: var(--app-ink);
+  cursor: pointer;
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 16px;
+  height: 38px;
+  justify-content: center;
+  width: 38px;
+}
+
+.syncBtn:hover:not(:disabled) {
+  border-color: var(--app-green);
+  color: var(--app-green);
+}
+
+.syncBtn:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.syncSpin {
+  animation: syncSpin 0.8s linear infinite;
+  display: inline-block;
+}
+
+@keyframes syncSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.syncTextBtn {
+  background: none;
+  border: none;
+  color: var(--app-green);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 12px;
+  text-decoration: underline;
+}
+
+.syncTextBtn:disabled {
+  color: var(--app-muted);
+  cursor: default;
+  text-decoration: none;
 }
 
 .convUnread {

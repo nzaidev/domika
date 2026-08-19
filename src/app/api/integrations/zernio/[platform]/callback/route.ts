@@ -6,6 +6,10 @@ import {
   listZernioAccounts,
   registerZernioWebhook,
 } from "@/lib/integrations/zernio";
+import { syncZernioConversations } from "@/lib/domain/conversations";
+
+// Reconciling accounts + backfilling initial conversations can take a moment.
+export const maxDuration = 60;
 
 // Return leg of the embedded signup. Attaches the connected account (for the
 // channel the agent chose) to the org that started it, and ensures our inbound
@@ -82,6 +86,17 @@ export async function GET(request: NextRequest) {
       `${origin}/api/webhooks/zernio`,
       process.env.ZERNIO_WEBHOOK_SECRET,
     );
+  }
+
+  // Backfill the newly connected number's existing chats so the inbox isn't
+  // empty on arrival. Capped + best-effort so a slow sync never blocks connect.
+  try {
+    await syncZernioConversations({
+      organizationId: state.org,
+      maxConversations: 25,
+    });
+  } catch (error) {
+    console.error("[zernio callback] backfill failed:", error);
   }
 
   const response = NextResponse.redirect(`${origin}/conversations?connected=1`);

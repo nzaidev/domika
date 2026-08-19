@@ -11,6 +11,7 @@ import {
   loadConversationAction,
   searchMessagesAction,
   sendReplyAction,
+  syncConversationsAction,
   type ConversationNote,
   type LoadedMessage,
 } from "./actions";
@@ -112,6 +113,7 @@ export function ConversationsInbox({
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [showConnect, setShowConnect] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropActive, setDropActive] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -192,6 +194,22 @@ export function ConversationsInbox({
     if (activeId) convertById(activeId);
   }
 
+  // Pull existing WhatsApp chats from the provider into the inbox.
+  function runSync() {
+    if (syncing) return;
+    setSyncing(true);
+    setError(null);
+    syncConversationsAction()
+      .then(() => {
+        // Reload so the freshly synced threads render from the server.
+        window.location.reload();
+      })
+      .catch(() => {
+        setError("No se pudo sincronizar. Intenta de nuevo.");
+        setSyncing(false);
+      });
+  }
+
   // Debounced message-content search across the chat history.
   function onSearch(value: string) {
     setQuery(value);
@@ -216,6 +234,14 @@ export function ConversationsInbox({
           Domika, y convertir cada chat en un prospecto.
         </p>
         <ConnectButtons />
+        <button
+          type="button"
+          className={styles.syncTextBtn}
+          onClick={runSync}
+          disabled={syncing}
+        >
+          {syncing ? "Sincronizando…" : "Ya conecté — Sincronizar conversaciones"}
+        </button>
       </div>
     );
   }
@@ -306,6 +332,16 @@ export function ConversationsInbox({
             value={query}
             onChange={(e) => onSearch(e.target.value)}
           />
+          <button
+            type="button"
+            className={styles.syncBtn}
+            onClick={runSync}
+            disabled={syncing}
+            title="Sincronizar conversaciones desde WhatsApp"
+            aria-label="Sincronizar"
+          >
+            <span className={syncing ? styles.syncSpin : undefined}>↻</span>
+          </button>
         </div>
         <div className={styles.inboxListScroll}>
           {filtered.map((c) => (

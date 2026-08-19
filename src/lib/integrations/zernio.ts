@@ -97,21 +97,133 @@ export async function listZernioAccounts(
       ? data.accounts
       : [];
     return rows
-      .map((a) => ({
-        id: String(a._id ?? a.id ?? ""),
-        platform: normalizePlatform(a.platform),
-        displayName:
-          (a.displayName as string) ?? (a.name as string) ?? null,
-        phone:
-          (a.phone as string) ??
-          (a.phoneNumber as string) ??
-          (a.displayPhoneNumber as string) ??
-          null,
-        isActive: a.isActive !== false && a.enabled !== false,
-      }))
+      .map((a) => {
+        const meta = (a.metadata ?? {}) as Record<string, unknown>;
+        return {
+          id: String(a._id ?? a.id ?? ""),
+          platform: normalizePlatform(a.platform),
+          displayName:
+            (a.displayName as string) ??
+            (meta.verifiedName as string) ??
+            (a.name as string) ??
+            null,
+          // The WhatsApp number lives in metadata.displayPhoneNumber, not a
+          // top-level field.
+          phone:
+            (a.phone as string) ??
+            (meta.displayPhoneNumber as string) ??
+            (a.phoneNumber as string) ??
+            null,
+          isActive: a.isActive !== false && a.enabled !== false,
+        };
+      })
       .filter((a) => a.id !== "" && a.id !== "undefined");
   } catch (error) {
     console.error("[zernio] list accounts failed:", error);
+    return [];
+  }
+}
+
+export type ZernioConversation = {
+  id: string;
+  accountId: string | null;
+  platform: MessageChannelName;
+  contactName: string | null;
+  contactPhone: string | null;
+  lastMessage: string | null;
+  updatedTime: string | null;
+  unreadCount: number;
+};
+
+// Lists the existing conversations for a profile. Zernio already holds the
+// number's chat history after coexistence sync — we pull it here so the inbox
+// isn't limited to whatever arrives on the webhook after connecting.
+// GET /v1/inbox/conversations?profileId=
+export async function listZernioConversations(
+  profileId: string,
+): Promise<ZernioConversation[]> {
+  try {
+    const res = await zernioFetch(
+      `/v1/inbox/conversations?profileId=${encodeURIComponent(profileId)}`,
+    );
+    if (!res.ok) {
+      console.error(`[zernio] conversations ${res.status}`);
+      return [];
+    }
+    const data = await res.json().catch(() => ({}));
+    const rows: Array<Record<string, unknown>> = Array.isArray(data?.data)
+      ? data.data
+      : [];
+    return rows
+      .map((c) => ({
+        id: String(c.id ?? c._id ?? ""),
+        accountId: (c.accountId as string) ?? null,
+        platform: normalizePlatform(c.platform),
+        contactName:
+          (c.participantName as string) ??
+          (c.participantUsername as string) ??
+          null,
+        contactPhone:
+          (c.participantUsername as string) ??
+          (c.participantId as string) ??
+          null,
+        lastMessage: (c.lastMessage as string) ?? null,
+        updatedTime: (c.updatedTime as string) ?? null,
+        unreadCount: typeof c.unreadCount === "number" ? c.unreadCount : 0,
+      }))
+      .filter((c) => c.id !== "");
+  } catch (error) {
+    console.error("[zernio] list conversations failed:", error);
+    return [];
+  }
+}
+
+export type ZernioHistoryMessage = {
+  id: string;
+  direction: "inbound" | "outbound";
+  body: string | null;
+  sentAt: string;
+};
+
+// Lists messages in a conversation. The accountId query param is required.
+// GET /v1/inbox/conversations/{id}/messages?accountId=
+export async function listZernioMessages(
+  conversationId: string,
+  accountId: string,
+): Promise<ZernioHistoryMessage[]> {
+  try {
+    const res = await zernioFetch(
+      `/v1/inbox/conversations/${encodeURIComponent(conversationId)}/messages?accountId=${encodeURIComponent(accountId)}`,
+    );
+    if (!res.ok) {
+      return [];
+    }
+    const data = await res.json().catch(() => ({}));
+    const rows: Array<Record<string, unknown>> = Array.isArray(data?.messages)
+      ? data.messages
+      : Array.isArray(data?.data)
+        ? data.data
+        : [];
+    return rows
+      .map((m) => ({
+        id: String(m.id ?? m._id ?? ""),
+        direction:
+          m.direction === "outgoing" || m.direction === "outbound"
+            ? ("outbound" as const)
+            : ("inbound" as const),
+        body:
+          (m.message as string) ??
+          (m.text as string) ??
+          (m.body as string) ??
+          null,
+        sentAt:
+          (m.sentAt as string) ??
+          (m.createdAt as string) ??
+          new Date().toISOString(),
+      }))
+      .filter((m) => m.id !== "");
+  } catch (error) {
+    console.error("[zernio] list messages failed:", error);
     return [];
   }
 }

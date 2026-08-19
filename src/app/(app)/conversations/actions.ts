@@ -6,11 +6,21 @@ import {
   getConversationDetail,
   searchConversationThreadIds,
   sendConversationReply,
+  syncMyConversations,
 } from "@/lib/domain/conversations";
 import type { MessageChannel } from "@/lib/database.types";
 
 export async function searchMessagesAction(query: string): Promise<string[]> {
   return searchConversationThreadIds(query);
+}
+
+export async function syncConversationsAction(): Promise<{
+  threads: number;
+  messages: number;
+}> {
+  const result = await syncMyConversations();
+  revalidatePath("/conversations");
+  return result;
 }
 
 export type LoadedMessage = {
