@@ -3045,6 +3045,29 @@ a.propertyCard:hover {
   text-align: center;
 }
 
+.dropZone {
+  align-items: center;
+  background: var(--app-mint);
+  border: 2px dashed var(--app-green);
+  border-radius: 12px;
+  color: var(--app-green-deep);
+  display: flex;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 6px;
+  justify-content: center;
+  margin: 10px 12px;
+  min-height: 56px;
+  padding: 10px;
+  text-align: center;
+}
+
+.dropZoneActive {
+  background: var(--app-green);
+  border-style: solid;
+  color: #ffffff;
+}
+
 .convRow {
   align-items: center;
   background: none;

@@ -30,3 +30,13 @@ alter table public.channel_connections enable row level security;
 create policy channel_connections_org_all on public.channel_connections
   for all using (public.is_same_org(organization_id))
   with check (public.is_same_org(organization_id));
+
+-- Per-agent inbox isolation: which agent owns a conversation (the agent whose
+-- connected channel produced it). NULL = unowned/legacy (visible org-wide).
+-- The Conversaciones inbox shows an agent only their own + unowned threads.
+alter table public.whatsapp_threads
+  add column if not exists owner_profile_id uuid
+  references public.profiles (id) on delete set null;
+
+create index if not exists whatsapp_threads_owner_idx
+  on public.whatsapp_threads (organization_id, owner_profile_id);

@@ -4,9 +4,14 @@ import { revalidatePath } from "next/cache";
 import {
   convertConversationToLead,
   getConversationDetail,
+  searchConversationThreadIds,
   sendConversationReply,
 } from "@/lib/domain/conversations";
 import type { MessageChannel } from "@/lib/database.types";
+
+export async function searchMessagesAction(query: string): Promise<string[]> {
+  return searchConversationThreadIds(query);
+}
 
 export type LoadedMessage = {
   id: string;

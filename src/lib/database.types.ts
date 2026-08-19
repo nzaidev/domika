@@ -132,6 +132,7 @@ export type WhatsappThreadRow = {
   contact_phone: string;
   contact_name: string | null;
   last_message_at: string | null;
+  owner_profile_id: string | null;
   created_at: string;
   updated_at: string;
 };

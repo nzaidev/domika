@@ -142,7 +142,12 @@ export async function getConversationsOverview(): Promise<ConversationsOverview>
       .limit(1),
   ]);
 
-  const threads = threadsRes.data ?? [];
+  // Per-agent isolation (JS-side so it tolerates pre-migration rows where the
+  // owner column doesn't exist yet): my own conversations + unowned/legacy.
+  const me = session.profile.id;
+  const threads = (threadsRes.data ?? []).filter(
+    (t) => t.owner_profile_id == null || t.owner_profile_id === me,
+  );
   const stats = await threadStats(
     supabase,
     organizationId,
@@ -186,7 +191,11 @@ export async function getConversationDetail(
     .eq("organization_id", organizationId)
     .maybeSingle();
 
-  if (!thread) {
+  if (
+    !thread ||
+    (thread.owner_profile_id != null &&
+      thread.owner_profile_id !== session.profile.id)
+  ) {
     return { status: "not_found" };
   }
 
@@ -266,6 +275,30 @@ export async function getConversationDetail(
   };
 }
 
+// Full-text-ish search across message bodies → the thread ids that contain a
+// match. The inbox only reveals conversations it already loaded (agent-scoped),
+// so this never leaks another agent's threads.
+export async function searchConversationThreadIds(
+  query: string,
+): Promise<string[]> {
+  const session = await getSessionProfile();
+  if (session.status !== "authenticated") {
+    return [];
+  }
+  const q = query.trim();
+  if (q.length < 2) {
+    return [];
+  }
+  const supabase = createAdminSupabaseClient();
+  const { data } = await supabase
+    .from("whatsapp_messages")
+    .select("thread_id")
+    .eq("organization_id", session.profile.organization_id)
+    .ilike("body", `%${q}%`)
+    .limit(300);
+  return [...new Set((data ?? []).map((r) => r.thread_id))];
+}
+
 export type SendReplyResult = { ok: true } | { ok: false; error: string };
 
 export async function sendConversationReply(input: {
@@ -290,12 +323,16 @@ export async function sendConversationReply(input: {
 
   const { data: thread } = await supabase
     .from("whatsapp_threads")
-    .select("id, external_thread_id")
+    .select("*")
     .eq("id", input.threadId)
     .eq("organization_id", organizationId)
     .maybeSingle();
 
-  if (!thread) {
+  if (
+    !thread ||
+    (thread.owner_profile_id != null &&
+      thread.owner_profile_id !== session.profile.id)
+  ) {
     return { ok: false, error: "La conversación no existe." };
   }
   if (!thread.external_thread_id) {
@@ -345,12 +382,16 @@ export async function convertConversationToLead(
 
   const { data: thread } = await supabase
     .from("whatsapp_threads")
-    .select("id, lead_id, contact_name, contact_phone, channel")
+    .select("*")
     .eq("id", threadId)
     .eq("organization_id", organizationId)
     .maybeSingle();
 
-  if (!thread) {
+  if (
+    !thread ||
+    (thread.owner_profile_id != null &&
+      thread.owner_profile_id !== session.profile.id)
+  ) {
     return { ok: false, error: "La conversación no existe." };
   }
   if (thread.lead_id) {
@@ -410,24 +451,29 @@ export async function ingestZernioInbound(
   const supabase = createAdminSupabaseClient();
 
   let organizationId: string | null = null;
+  let ownerProfileId: string | null = null;
   if (msg.externalAccountId) {
     const { data } = await supabase
       .from("channel_connections")
-      .select("organization_id")
+      .select("organization_id, connected_by")
       .eq("external_account_id", msg.externalAccountId)
       .eq("status", "active")
       .maybeSingle();
-    organizationId = data?.organization_id ?? null;
+    if (data) {
+      organizationId = data.organization_id;
+      ownerProfileId = data.connected_by;
+    }
   }
   if (!organizationId) {
     // Fallback: a single active connection (common pilot case).
     const { data } = await supabase
       .from("channel_connections")
-      .select("organization_id")
+      .select("organization_id, connected_by")
       .eq("status", "active")
       .limit(2);
     if ((data ?? []).length === 1) {
       organizationId = data![0].organization_id;
+      ownerProfileId = data![0].connected_by;
     }
   }
   if (!organizationId) {
@@ -456,6 +502,7 @@ export async function ingestZernioInbound(
         contact_phone: contactPhone,
         contact_name: msg.contactName,
         last_message_at: msg.sentAt,
+        owner_profile_id: ownerProfileId,
       })
       .select("id")
       .single();
