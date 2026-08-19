@@ -67,6 +67,13 @@ export const UsersIcon = (p: IconProps) => (
   </Svg>
 );
 
+export const ChatIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 5h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H9l-4 4v-4H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" />
+    <path d="M8 9.5h8M8 12.5h5" />
+  </Svg>
+);
+
 export const TagIcon = (p: IconProps) => (
   <Svg {...p}>
     <path d="M3 11V4h7l10 10-7 7L3 11Z" />

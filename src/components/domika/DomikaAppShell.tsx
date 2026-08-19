@@ -9,6 +9,7 @@ import {
   BellIcon,
   BrandMark,
   BuildingIcon,
+  ChatIcon,
   ChevronIcon,
   ContractIcon,
   FileIcon,
@@ -34,6 +35,7 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { href: "/dashboard", label: "Escritorio", Icon: HomeIcon },
+  { href: "/conversations", label: "Conversaciones", Icon: ChatIcon },
   { href: "/leads", label: "Prospectos", Icon: UsersIcon },
   { href: "/tags", label: "Etiquetas", Icon: TagIcon },
   { href: "/properties", label: "Propiedades", Icon: BuildingIcon },

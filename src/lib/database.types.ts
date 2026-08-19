@@ -96,6 +96,20 @@ export type WhatsappAccountRow = {
   updated_at: string;
 };
 
+export type ChannelConnectionRow = {
+  id: string;
+  organization_id: string;
+  provider: string;
+  platform: MessageChannel;
+  external_account_id: string;
+  display_name: string | null;
+  phone: string | null;
+  status: "active" | "disconnected";
+  connected_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type MetaLeadPageRow = {
   id: string;
   organization_id: string;
@@ -541,6 +555,7 @@ export type Database = {
       profiles: Table<ProfileRow>;
       invitations: Table<InvitationRow>;
       whatsapp_accounts: Table<WhatsappAccountRow>;
+      channel_connections: Table<ChannelConnectionRow>;
       meta_lead_pages: Table<MetaLeadPageRow>;
       whatsapp_threads: Table<WhatsappThreadRow>;
       whatsapp_messages: Table<WhatsappMessageRow>;
