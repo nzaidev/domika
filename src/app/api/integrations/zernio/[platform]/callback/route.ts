@@ -2,7 +2,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { headers } from "next/headers";
 import type { MessageChannel } from "@/lib/database.types";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
-import { registerZernioWebhook } from "@/lib/integrations/zernio";
+import {
+  listZernioAccounts,
+  registerZernioWebhook,
+} from "@/lib/integrations/zernio";
 
 // Return leg of the embedded signup. Attaches the connected account (for the
 // channel the agent chose) to the org that started it, and ensures our inbound
@@ -27,43 +30,50 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/conversations?connect=expired`);
   }
 
-  // Connection details come back as query params; field names aren't published,
-  // so read the likely candidates.
-  const q = request.nextUrl.searchParams;
-  // Log the real params so we can lock the field mapping on the first live connect.
-  console.log(
-    "[zernio callback] params:",
-    JSON.stringify(Object.fromEntries(q.entries())),
-  );
-  const externalAccountId =
-    q.get("accountId") ??
-    q.get("account_id") ??
-    q.get("phoneNumberId") ??
-    q.get("phone_number_id") ??
-    q.get("pageId") ??
-    q.get("wabaId") ??
-    q.get("id");
-  const phone =
-    q.get("phone") ?? q.get("phoneNumber") ?? q.get("display_phone_number");
-  const displayName =
-    q.get("name") ?? q.get("displayName") ?? q.get("username") ?? phone;
-
-  if (!externalAccountId) {
-    return NextResponse.redirect(`${origin}/conversations?connect=incomplete`);
+  // Meta redirects to Zernio's own callback, so the return leg to us carries no
+  // account details. Read the truth from Zernio's API instead and reconcile the
+  // account(s) the agent just connected into channel_connections.
+  const profileId = process.env.ZERNIO_PROFILE_ID;
+  if (!profileId) {
+    return NextResponse.redirect(`${origin}/conversations?connect=misconfigured`);
   }
 
   const supabase = createAdminSupabaseClient();
+
+  // Accounts already claimed by anyone — so we attribute only the NEW one(s) to
+  // the agent who started this connect (per-agent isolation on a shared profile).
+  const { data: existingRows } = await supabase
+    .from("channel_connections")
+    .select("external_account_id")
+    .eq("provider", "zernio");
+  const known = new Set(
+    (existingRows ?? []).map((r) => r.external_account_id),
+  );
+
+  const accounts = await listZernioAccounts(profileId);
+  // Only claim accounts for the channel the agent chose (WhatsApp) that we
+  // haven't already attributed to someone.
+  const fresh = accounts.filter(
+    (a) => a.platform === state.channel && !known.has(a.id),
+  );
+
+  if (fresh.length === 0) {
+    // Nothing new for this channel — the signup didn't finish (e.g. no WhatsApp
+    // number was selected). Don't claim unrelated/stale accounts.
+    return NextResponse.redirect(`${origin}/conversations?connect=incomplete`);
+  }
+
   await supabase.from("channel_connections").upsert(
-    {
+    fresh.map((a) => ({
       organization_id: state.org,
       provider: "zernio",
       platform: state.channel,
-      external_account_id: externalAccountId,
-      display_name: displayName,
-      phone,
+      external_account_id: a.id,
+      display_name: a.displayName ?? a.phone,
+      phone: a.phone,
       connected_by: state.by ?? null,
-      status: "active",
-    },
+      status: a.isActive ? "active" : "inactive",
+    })),
     { onConflict: "provider,external_account_id" },
   );
 

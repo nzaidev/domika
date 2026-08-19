@@ -23,6 +23,7 @@ export type LeadFilters = {
   assignedTo?: string;
   businessUnit?: string;
   tagId?: string;
+  stageId?: string;
 };
 
 export type BoardMember = { id: string; full_name: string };
@@ -93,6 +94,10 @@ export async function getLeadsBoard(
 
   if (filters.businessUnit) {
     leadsQuery = leadsQuery.eq("business_unit", filters.businessUnit);
+  }
+
+  if (filters.stageId) {
+    leadsQuery = leadsQuery.eq("stage_id", filters.stageId);
   }
 
   const [stagesResult, leadsResult, membersResult] = await Promise.all([

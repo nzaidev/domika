@@ -8,6 +8,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 Matt Pocock engineering skills are installed under `.agents/skills/`. Invoke them with slash commands in Cursor (e.g. `/tdd`, `/grill-me`, `/to-issues`).
 
+Nick Zarzycki AI security skills ([nzaidev/ai-security-skills](https://github.com/nzaidev/ai-security-skills)) are also installed project-wide. Start with `/security-assessment` for a full review, or run focused checks like `/review-auth` and `/review-secrets-and-crypto`.
+
 ### Issue tracker
 
 GitHub Issues via the `gh` CLI; external PRs are not a triage surface. See `docs/agents/issue-tracker.md`.

@@ -71,7 +71,13 @@ function applyMove(stages: LeadsBoardStage[], move: Move): LeadsBoardStage[] {
   );
 }
 
-export function LeadsBoard({ stages }: { stages: LeadsBoardStage[] }) {
+export function LeadsBoard({
+  stages,
+  highlightStageId = null,
+}: {
+  stages: LeadsBoardStage[];
+  highlightStageId?: string | null;
+}) {
   const [optimisticStages, addMove] = useOptimistic(stages, applyMove);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -120,7 +126,7 @@ export function LeadsBoard({ stages }: { stages: LeadsBoardStage[] }) {
           <article
             className={`${styles.stage} ${
               dropTarget === stage.id ? styles.stageDropActive : ""
-            }`}
+            } ${highlightStageId === stage.id ? styles.stageFiltered : ""}`}
             key={stage.id}
             onDragOver={(event) => {
               if (event.dataTransfer.types.includes(DRAG_MIME)) {

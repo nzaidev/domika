@@ -48,6 +48,7 @@ export default async function LeadsPage({
     assignedTo: firstParam(params.assignee) || undefined,
     businessUnit: firstParam(params.unit) || undefined,
     tagId: firstParam(params.tag) || undefined,
+    stageId: firstParam(params.stage) || undefined,
   };
 
   const board = await getLeadsBoard(filters);
@@ -78,8 +79,13 @@ export default async function LeadsPage({
       filters.source ||
       filters.assignedTo ||
       filters.businessUnit ||
-      filters.tagId,
+      filters.tagId ||
+      filters.stageId,
   );
+
+  const activeStage = filters.stageId
+    ? board.stages.find((stage) => stage.id === filters.stageId)
+    : null;
 
   return (
     <div className={styles.page}>
@@ -91,6 +97,7 @@ export default async function LeadsPage({
           <>
             <span className={styles.pill}>
               {board.totalLeads} prospecto{board.totalLeads === 1 ? "" : "s"}
+              {activeStage ? ` · ${activeStage.name}` : ""}
             </span>
             <Link className={styles.secondaryButton} href="/leads/import">
               Importar contactos
@@ -143,6 +150,18 @@ export default async function LeadsPage({
             </option>
           ))}
         </select>
+        <select
+          className={styles.textInput}
+          name="stage"
+          defaultValue={firstParam(params.stage)}
+        >
+          <option value="">Etapa: todas</option>
+          {board.stages.map((stage) => (
+            <option key={stage.id} value={stage.id}>
+              {stage.name}
+            </option>
+          ))}
+        </select>
         {board.tags.length > 0 ? (
           <select
             className={styles.textInput}
@@ -169,7 +188,10 @@ export default async function LeadsPage({
 
       <div className={styles.leadsBoardArea}>
         <CreateLeadPanel />
-        <LeadsBoard stages={board.stages} />
+        <LeadsBoard
+          stages={board.stages}
+          highlightStageId={filters.stageId ?? null}
+        />
       </div>
     </div>
   );

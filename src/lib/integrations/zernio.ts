@@ -67,6 +67,55 @@ export async function getConnectUrl(
   }
 }
 
+export type ZernioAccount = {
+  id: string;
+  platform: MessageChannelName;
+  displayName: string | null;
+  phone: string | null;
+  isActive: boolean;
+};
+
+// Lists the channel accounts connected under a Zernio profile. This is the real
+// source of truth after an embedded-signup completes: Meta redirects to Zernio's
+// own callback (redirect_uri=zernio.com/.../connect/whatsapp/callback), Zernio
+// stores the account, then bounces the user back to us WITHOUT the account
+// details — so we read them here rather than from return-leg query params.
+// GET /v1/accounts?profileId=
+export async function listZernioAccounts(
+  profileId: string,
+): Promise<ZernioAccount[]> {
+  try {
+    const res = await zernioFetch(
+      `/v1/accounts?profileId=${encodeURIComponent(profileId)}`,
+    );
+    if (!res.ok) {
+      console.error(`[zernio] accounts ${res.status}`);
+      return [];
+    }
+    const data = await res.json().catch(() => ({}));
+    const rows: Array<Record<string, unknown>> = Array.isArray(data?.accounts)
+      ? data.accounts
+      : [];
+    return rows
+      .map((a) => ({
+        id: String(a._id ?? a.id ?? ""),
+        platform: normalizePlatform(a.platform),
+        displayName:
+          (a.displayName as string) ?? (a.name as string) ?? null,
+        phone:
+          (a.phone as string) ??
+          (a.phoneNumber as string) ??
+          (a.displayPhoneNumber as string) ??
+          null,
+        isActive: a.isActive !== false && a.enabled !== false,
+      }))
+      .filter((a) => a.id !== "" && a.id !== "undefined");
+  } catch (error) {
+    console.error("[zernio] list accounts failed:", error);
+    return [];
+  }
+}
+
 // Registers our inbound webhook once. POST /v1/webhooks/settings.
 export async function registerZernioWebhook(
   callbackUrl: string,

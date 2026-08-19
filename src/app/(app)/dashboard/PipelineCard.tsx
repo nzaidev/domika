@@ -66,15 +66,19 @@ function AreaChart() {
   );
 }
 
+function stageLeadsHref(stageId: string) {
+  return `/leads?stage=${encodeURIComponent(stageId)}`;
+}
+
 function StageTiles({ stages }: { stages: PipelineStage[] }) {
   return (
     <div className={styles.stageTileRow}>
       {stages.map((stage) => (
         <Link
           className={styles.stageTile}
-          href="/leads"
+          href={stageLeadsHref(stage.id)}
           key={stage.id}
-          title={stage.name}
+          title={`Ver prospectos en ${stage.name}`}
         >
           <div className={styles.stageTileName}>{stage.name}</div>
           <div className={styles.stageTileCount}>{stage.count}</div>
@@ -132,12 +136,17 @@ function FunnelView({
         const sharePct = totalLeads > 0 ? (stage.count / totalLeads) * 100 : 0;
         const color = stageColor(stage.name);
         return (
-          <div className={styles.funnelRow} key={stage.id}>
+          <Link
+            className={styles.funnelRowLink}
+            href={stageLeadsHref(stage.id)}
+            key={stage.id}
+            title={`Ver prospectos en ${stage.name}`}
+          >
+            <div className={styles.funnelRow}>
             <div className={styles.funnelBandCell}>
               <div
                 className={styles.funnelBand}
                 style={{ width: `${widthPct}%`, background: color }}
-                title={`${stage.name}: ${stage.count}`}
               >
                 <span className={styles.funnelBandLabel}>{stage.name}</span>
               </div>
@@ -157,7 +166,8 @@ function FunnelView({
                 {Math.round(sharePct)}%
               </span>
             </span>
-          </div>
+            </div>
+          </Link>
         );
       })}
 

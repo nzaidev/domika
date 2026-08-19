@@ -7,6 +7,12 @@
       "skillPath": "skills/engineering/ask-matt/SKILL.md",
       "computedHash": "f3ac3351e2a242ce2591e4f8475424d58f62db3f5786332b78f330b15312d1e0"
     },
+    "assess-compliance": {
+      "source": "nzaidev/ai-security-skills",
+      "sourceType": "github",
+      "skillPath": "skills/assess-compliance/SKILL.md",
+      "computedHash": "b35288fed10e6e955e57a9312fc8b145ad429e1ff8bec23ee8f3038d79bc4ef4"
+    },
     "codebase-design": {
       "source": "mattpocock/skills",
       "sourceType": "github",
@@ -42,6 +48,12 @@
       "sourceType": "github",
       "skillPath": "skills/personal/edit-article/SKILL.md",
       "computedHash": "8d7aec1987245a27e9c7d585b9f11d1129b8bd8ecb3a8596cdd3048974d9e302"
+    },
+    "fix-and-report": {
+      "source": "nzaidev/ai-security-skills",
+      "sourceType": "github",
+      "skillPath": "skills/fix-and-report/SKILL.md",
+      "computedHash": "f4563a3d682e85f5761d830319fce389582c6f189f345e031f954a95428fd52e"
     },
     "git-guardrails-claude-code": {
       "source": "mattpocock/skills",
@@ -133,11 +145,71 @@
       "skillPath": "skills/in-progress/review/SKILL.md",
       "computedHash": "a6c596036b399698ec5526aed60bddc134923832582e21ab140bb27f2fc4fff9"
     },
+    "review-ai-security": {
+      "source": "nzaidev/ai-security-skills",
+      "sourceType": "github",
+      "skillPath": "skills/review-ai-security/SKILL.md",
+      "computedHash": "bde2c837db20eabd95338c41d3c5a8878ab55b9d8f0157c483a2b1ddafb3808b"
+    },
+    "review-auth": {
+      "source": "nzaidev/ai-security-skills",
+      "sourceType": "github",
+      "skillPath": "skills/review-auth/SKILL.md",
+      "computedHash": "8014909af8136662880acb6905d609a696605364f70587abbb36360bb74c1084"
+    },
+    "review-business-logic": {
+      "source": "nzaidev/ai-security-skills",
+      "sourceType": "github",
+      "skillPath": "skills/review-business-logic/SKILL.md",
+      "computedHash": "d053e6fb222dd7ccac60ae80b5c9b1c307e406656a77a8ad1d2df624ccc574ce"
+    },
+    "review-cloud-and-logging": {
+      "source": "nzaidev/ai-security-skills",
+      "sourceType": "github",
+      "skillPath": "skills/review-cloud-and-logging/SKILL.md",
+      "computedHash": "89ff8bb1159a4a6496e8138f89a0145f2e60a3428b35bce2ea5bf1be11692d01"
+    },
+    "review-data-security": {
+      "source": "nzaidev/ai-security-skills",
+      "sourceType": "github",
+      "skillPath": "skills/review-data-security/SKILL.md",
+      "computedHash": "a0e62d7fa2f503969f360a03d332befb7d853119efed9a6924c76ab7543aefce"
+    },
+    "review-input-and-api": {
+      "source": "nzaidev/ai-security-skills",
+      "sourceType": "github",
+      "skillPath": "skills/review-input-and-api/SKILL.md",
+      "computedHash": "7d54ccaeb0d2adc2c492f24d28c04e1958e9492fc8da0021f50c3ae71a7c6098"
+    },
+    "review-payments-and-webhooks": {
+      "source": "nzaidev/ai-security-skills",
+      "sourceType": "github",
+      "skillPath": "skills/review-payments-and-webhooks/SKILL.md",
+      "computedHash": "915985e4319cc3348679a9148aa9fd4162dc27946e8d4ac736a58c2523132b93"
+    },
+    "review-secrets-and-crypto": {
+      "source": "nzaidev/ai-security-skills",
+      "sourceType": "github",
+      "skillPath": "skills/review-secrets-and-crypto/SKILL.md",
+      "computedHash": "e4dfba5f08eb4ef62cebacce84adac5bc7865a20c4c89dcf278b61495bbc5de7"
+    },
+    "review-supply-chain": {
+      "source": "nzaidev/ai-security-skills",
+      "sourceType": "github",
+      "skillPath": "skills/review-supply-chain/SKILL.md",
+      "computedHash": "805bd058434a04df1f307727513a5dfc811cfe64313542958bc3b40171a557d2"
+    },
     "scaffold-exercises": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/misc/scaffold-exercises/SKILL.md",
       "computedHash": "486d60a7e984b76850bd22b3b58b98d0063a3b9b3acf319e4d5a37bf1283ea02"
+    },
+    "security-assessment": {
+      "source": "nzaidev/ai-security-skills",
+      "sourceType": "github",
+      "skillPath": "skills/security-assessment/SKILL.md",
+      "computedHash": "b34594def40503cac369ed5aae73a0f75238f1c3b64673ca915d1624bd650f8e"
     },
     "setup-matt-pocock-skills": {
       "source": "mattpocock/skills",
