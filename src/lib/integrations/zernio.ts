@@ -31,15 +31,28 @@ async function zernioFetch(
   });
 }
 
-// Embedded signup: returns the Meta signup URL to redirect the agent to.
-// GET /v1/connect/whatsapp?profileId=&redirect_url=
-export async function getWhatsappConnectUrl(
+// Zernio connect slug per channel. Confirmed for WhatsApp
+// (GET /v1/connect/whatsapp); instagram/facebook follow the same
+// documented pattern and the platform naming in Zernio's inbox API.
+export const ZERNIO_CONNECT_SLUG: Record<
+  MessageChannelName,
+  "whatsapp" | "instagram" | "facebook"
+> = {
+  whatsapp: "whatsapp",
+  instagram: "instagram",
+  messenger: "facebook",
+};
+
+// Embedded signup: returns the provider signup URL to redirect the agent to.
+// GET /v1/connect/{slug}?profileId=&redirect_url=
+export async function getConnectUrl(
+  slug: string,
   profileId: string,
   redirectUrl: string,
 ): Promise<string | null> {
   try {
     const res = await zernioFetch(
-      `/v1/connect/whatsapp?profileId=${encodeURIComponent(profileId)}&redirect_url=${encodeURIComponent(redirectUrl)}`,
+      `/v1/connect/${slug}?profileId=${encodeURIComponent(profileId)}&redirect_url=${encodeURIComponent(redirectUrl)}`,
     );
     if (!res.ok) {
       console.error(`[zernio] connect ${res.status}: ${(await res.text()).slice(0, 200)}`);

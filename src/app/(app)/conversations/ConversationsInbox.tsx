@@ -18,6 +18,33 @@ const CHANNEL: Record<MessageChannel, { label: string; color: string }> = {
   messenger: { label: "Messenger", color: "#0084ff" },
 };
 
+// Channels an agent can connect through Domika (Zernio embedded signup).
+const CONNECT_OPTIONS = [
+  { slug: "whatsapp", label: "WhatsApp", color: "#25d366" },
+  { slug: "instagram", label: "Instagram", color: "#c13584" },
+  { slug: "facebook", label: "Facebook", color: "#0084ff" },
+];
+
+function ConnectButtons() {
+  return (
+    <div className={styles.connectRow}>
+      {CONNECT_OPTIONS.map((c) => (
+        <a
+          key={c.slug}
+          className={styles.connectBtn}
+          href={`/api/integrations/zernio/${c.slug}`}
+        >
+          <span
+            className={styles.connectDot}
+            style={{ background: c.color }}
+          />
+          Conectar {c.label}
+        </a>
+      ))}
+    </div>
+  );
+}
+
 export type ConversationDetailView = {
   messages: LoadedMessage[];
   leadId: string | null;
@@ -63,6 +90,7 @@ export function ConversationsInbox({
   const [loading, setLoading] = useState(false);
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [showConnect, setShowConnect] = useState(false);
   const [pending, startTransition] = useTransition();
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -144,15 +172,10 @@ export function ConversationsInbox({
         <span className={styles.inboxConnectIcon}>💬</span>
         <h2>Todas tus conversaciones, en un solo lugar</h2>
         <p className={styles.mutedText}>
-          Conecta tu WhatsApp Business para recibir y responder mensajes dentro
-          de Domika, y convertir cada chat en un prospecto.
+          Conecta tus canales para recibir y responder mensajes dentro de
+          Domika, y convertir cada chat en un prospecto.
         </p>
-        <a
-          className={styles.primaryButton}
-          href="/api/integrations/zernio/whatsapp"
-        >
-          Conectar WhatsApp
-        </a>
+        <ConnectButtons />
       </div>
     );
   }
@@ -164,8 +187,24 @@ export function ConversationsInbox({
       <aside className={styles.inboxList}>
         <div className={styles.inboxListHead}>
           <span className={styles.eyebrow}>Entradas</span>
-          <span className={styles.inboxCount}>{convos.length}</span>
+          <div className={styles.inboxHeadRight}>
+            <span className={styles.inboxCount}>{convos.length}</span>
+            <button
+              type="button"
+              className={styles.connectPlus}
+              onClick={() => setShowConnect((v) => !v)}
+              title="Conectar un canal"
+              aria-expanded={showConnect}
+            >
+              +
+            </button>
+          </div>
         </div>
+        {showConnect ? (
+          <div className={styles.connectMenu}>
+            <ConnectButtons />
+          </div>
+        ) : null}
         <div className={styles.inboxListScroll}>
           {convos.map((c) => (
             <button

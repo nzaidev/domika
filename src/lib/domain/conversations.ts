@@ -255,12 +255,7 @@ export async function convertConversationToLead(
     .limit(1)
     .maybeSingle();
 
-  const source =
-    thread.channel === "whatsapp"
-      ? "whatsapp"
-      : thread.channel === "instagram"
-        ? "meta_ads"
-        : "other";
+  const source = thread.channel === "whatsapp" ? "whatsapp" : "other";
 
   const { data: lead, error } = await supabase
     .from("leads")

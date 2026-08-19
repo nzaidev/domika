@@ -1,10 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { headers } from "next/headers";
+import type { MessageChannel } from "@/lib/database.types";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { registerZernioWebhook } from "@/lib/integrations/zernio";
 
-// Return leg of Zernio's embedded signup. Attaches the connected account to the
-// org that started it, and ensures our inbound webhook is registered.
+// Return leg of the embedded signup. Attaches the connected account (for the
+// channel the agent chose) to the org that started it, and ensures our inbound
+// webhook is registered.
 
 export async function GET(request: NextRequest) {
   const headerList = await headers();
@@ -13,7 +15,7 @@ export async function GET(request: NextRequest) {
   const origin = `${proto}://${host}`;
 
   const raw = request.cookies.get("zernio_connect")?.value;
-  let state: { org?: string; by?: string } = {};
+  let state: { org?: string; by?: string; channel?: MessageChannel } = {};
   if (raw) {
     try {
       state = JSON.parse(raw);
@@ -21,8 +23,8 @@ export async function GET(request: NextRequest) {
       state = {};
     }
   }
-  if (!state.org) {
-    return NextResponse.redirect(`${origin}/settings?zernio=expired`);
+  if (!state.org || !state.channel) {
+    return NextResponse.redirect(`${origin}/conversations?connect=expired`);
   }
 
   // Connection details come back as query params; field names aren't published,
@@ -33,14 +35,16 @@ export async function GET(request: NextRequest) {
     q.get("account_id") ??
     q.get("phoneNumberId") ??
     q.get("phone_number_id") ??
+    q.get("pageId") ??
     q.get("wabaId") ??
     q.get("id");
   const phone =
     q.get("phone") ?? q.get("phoneNumber") ?? q.get("display_phone_number");
-  const displayName = q.get("name") ?? q.get("displayName") ?? phone;
+  const displayName =
+    q.get("name") ?? q.get("displayName") ?? q.get("username") ?? phone;
 
   if (!externalAccountId) {
-    return NextResponse.redirect(`${origin}/settings?zernio=incomplete`);
+    return NextResponse.redirect(`${origin}/conversations?connect=incomplete`);
   }
 
   const supabase = createAdminSupabaseClient();
@@ -48,7 +52,7 @@ export async function GET(request: NextRequest) {
     {
       organization_id: state.org,
       provider: "zernio",
-      platform: "whatsapp",
+      platform: state.channel,
       external_account_id: externalAccountId,
       display_name: displayName,
       phone,
