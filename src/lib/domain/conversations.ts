@@ -23,6 +23,7 @@ export type ConversationSummary = {
   lastMessage: string | null;
   lastMessageAt: string | null;
   lastDirection: "inbound" | "outbound" | null;
+  unread: number;
 };
 
 export type ConversationsOverview =
@@ -36,6 +37,18 @@ export type ConversationsOverview =
       canReply: boolean;
     };
 
+// Contact context shown in the right rail — populated from the linked lead.
+export type ConversationContact = {
+  leadId: string | null;
+  email: string | null;
+  source: string | null;
+  stageName: string | null;
+  assigneeName: string | null;
+  zone: string | null;
+  budgetLabel: string | null;
+  notes: Array<{ id: string; title: string; body: string | null; at: string }>;
+};
+
 export type ConversationDetail =
   | { status: "not_found" }
   | {
@@ -43,14 +56,24 @@ export type ConversationDetail =
       thread: WhatsappThreadRow;
       messages: WhatsappMessageRow[];
       canReply: boolean;
+      contact: ConversationContact;
     };
 
-async function lastMessageByThread(
+type ThreadStat = {
+  body: string | null;
+  direction: "inbound" | "outbound";
+  unread: number;
+  sealed: boolean;
+};
+
+// Last message + a lightweight "unread" = trailing inbound messages (i.e. the
+// unanswered ones at the end of the thread).
+async function threadStats(
   supabase: ReturnType<typeof createAdminSupabaseClient>,
   organizationId: string,
   threadIds: string[],
-): Promise<Map<string, { body: string | null; direction: "inbound" | "outbound" }>> {
-  const map = new Map<string, { body: string | null; direction: "inbound" | "outbound" }>();
+): Promise<Map<string, ThreadStat>> {
+  const map = new Map<string, ThreadStat>();
   if (threadIds.length === 0) {
     return map;
   }
@@ -60,13 +83,39 @@ async function lastMessageByThread(
     .eq("organization_id", organizationId)
     .in("thread_id", threadIds)
     .order("sent_at", { ascending: false })
-    .limit(400);
+    .limit(600);
   for (const row of data ?? []) {
-    if (!map.has(row.thread_id)) {
-      map.set(row.thread_id, { body: row.body, direction: row.direction });
+    let stat = map.get(row.thread_id);
+    if (!stat) {
+      stat = { body: row.body, direction: row.direction, unread: 0, sealed: false };
+      map.set(row.thread_id, stat);
+    }
+    if (!stat.sealed) {
+      if (row.direction === "inbound") {
+        stat.unread += 1;
+      } else {
+        stat.sealed = true;
+      }
     }
   }
   return map;
+}
+
+const SOURCE_LABELS: Record<string, string> = {
+  manual: "Manual",
+  whatsapp: "WhatsApp",
+  meta_ads: "Meta Ads",
+  portal: "Portal",
+  referral: "Referido",
+  listing: "Publicación",
+  other: "Otro",
+};
+
+function budgetLabel(min: number | null, max: number | null): string | null {
+  if (min == null && max == null) return null;
+  const fmt = (v: number) => `$${Math.round(v).toLocaleString("en-US")}`;
+  if (min != null && max != null && min !== max) return `${fmt(min)} – ${fmt(max)}`;
+  return fmt((max ?? min) as number);
 }
 
 export async function getConversationsOverview(): Promise<ConversationsOverview> {
@@ -94,23 +143,24 @@ export async function getConversationsOverview(): Promise<ConversationsOverview>
   ]);
 
   const threads = threadsRes.data ?? [];
-  const lastMessages = await lastMessageByThread(
+  const stats = await threadStats(
     supabase,
     organizationId,
     threads.map((t) => t.id),
   );
 
   const conversations: ConversationSummary[] = threads.map((thread) => {
-    const last = lastMessages.get(thread.id);
+    const stat = stats.get(thread.id);
     return {
       id: thread.id,
       channel: thread.channel,
       contactName: thread.contact_name ?? thread.contact_phone,
       contactPhone: thread.contact_phone,
       leadId: thread.lead_id,
-      lastMessage: last?.body ?? null,
+      lastMessage: stat?.body ?? null,
       lastMessageAt: thread.last_message_at,
-      lastDirection: last?.direction ?? null,
+      lastDirection: stat?.direction ?? null,
+      unread: stat?.unread ?? 0,
     };
   });
 
@@ -148,11 +198,71 @@ export async function getConversationDetail(
     .order("sent_at", { ascending: true })
     .limit(300);
 
+  const contact: ConversationContact = {
+    leadId: thread.lead_id,
+    email: null,
+    source: null,
+    stageName: null,
+    assigneeName: null,
+    zone: null,
+    budgetLabel: null,
+    notes: [],
+  };
+
+  if (thread.lead_id) {
+    const [{ data: lead }, { data: activities }] = await Promise.all([
+      supabase
+        .from("leads")
+        .select("email, source, desired_zone, budget_min, budget_max, stage_id, assigned_to")
+        .eq("id", thread.lead_id)
+        .eq("organization_id", organizationId)
+        .maybeSingle(),
+      supabase
+        .from("lead_activities")
+        .select("id, title, body, created_at, activity_type")
+        .eq("organization_id", organizationId)
+        .eq("lead_id", thread.lead_id)
+        .eq("activity_type", "note")
+        .order("created_at", { ascending: false })
+        .limit(4),
+    ]);
+
+    if (lead) {
+      contact.email = lead.email;
+      contact.source = lead.source ? (SOURCE_LABELS[lead.source] ?? lead.source) : null;
+      contact.zone = lead.desired_zone;
+      contact.budgetLabel = budgetLabel(lead.budget_min, lead.budget_max);
+      if (lead.stage_id) {
+        const { data: stage } = await supabase
+          .from("pipeline_stages")
+          .select("name")
+          .eq("id", lead.stage_id)
+          .maybeSingle();
+        contact.stageName = stage?.name ?? null;
+      }
+      if (lead.assigned_to) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", lead.assigned_to)
+          .maybeSingle();
+        contact.assigneeName = profile?.full_name ?? null;
+      }
+    }
+    contact.notes = (activities ?? []).map((a) => ({
+      id: a.id,
+      title: a.title,
+      body: a.body,
+      at: a.created_at,
+    }));
+  }
+
   return {
     status: "ready",
     thread,
     messages: messages ?? [],
     canReply: hasZernioConfig(),
+    contact,
   };
 }
 

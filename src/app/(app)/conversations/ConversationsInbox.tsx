@@ -9,6 +9,7 @@ import {
   convertConversationAction,
   loadConversationAction,
   sendReplyAction,
+  type ConversationNote,
   type LoadedMessage,
 } from "./actions";
 
@@ -18,32 +19,11 @@ const CHANNEL: Record<MessageChannel, { label: string; color: string }> = {
   messenger: { label: "Messenger", color: "#0084ff" },
 };
 
-// Channels an agent can connect through Domika (Zernio embedded signup).
 const CONNECT_OPTIONS = [
   { slug: "whatsapp", label: "WhatsApp", color: "#25d366" },
   { slug: "instagram", label: "Instagram", color: "#c13584" },
   { slug: "facebook", label: "Facebook", color: "#0084ff" },
 ];
-
-function ConnectButtons() {
-  return (
-    <div className={styles.connectRow}>
-      {CONNECT_OPTIONS.map((c) => (
-        <a
-          key={c.slug}
-          className={styles.connectBtn}
-          href={`/api/integrations/zernio/${c.slug}`}
-        >
-          <span
-            className={styles.connectDot}
-            style={{ background: c.color }}
-          />
-          Conectar {c.label}
-        </a>
-      ))}
-    </div>
-  );
-}
 
 export type ConversationDetailView = {
   messages: LoadedMessage[];
@@ -51,6 +31,13 @@ export type ConversationDetailView = {
   contactName: string;
   contactPhone: string;
   channel: MessageChannel;
+  email: string | null;
+  source: string | null;
+  stageName: string | null;
+  assigneeName: string | null;
+  zone: string | null;
+  budgetLabel: string | null;
+  notes: ConversationNote[];
 };
 
 function initials(name: string): string {
@@ -65,10 +52,47 @@ function initials(name: string): string {
 function timeLabel(value: string | null): string {
   if (!value) return "";
   const d = new Date(value);
-  const sameDay = d.toDateString() === new Date().toDateString();
-  return sameDay
-    ? d.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })
-    : d.toLocaleDateString("es", { day: "numeric", month: "short" });
+  const now = new Date();
+  const yest = new Date(now);
+  yest.setDate(now.getDate() - 1);
+  if (d.toDateString() === now.toDateString())
+    return d.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
+  if (d.toDateString() === yest.toDateString()) return "Ayer";
+  return d.toLocaleDateString("es", { day: "numeric", month: "short" });
+}
+
+function clockLabel(value: string): string {
+  return new Date(value).toLocaleTimeString("es", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function daySeparator(value: string): string {
+  const d = new Date(value);
+  const now = new Date();
+  const yest = new Date(now);
+  yest.setDate(now.getDate() - 1);
+  if (d.toDateString() === now.toDateString()) return "Hoy";
+  if (d.toDateString() === yest.toDateString()) return "Ayer";
+  return d.toLocaleDateString("es", { day: "numeric", month: "long" });
+}
+
+function ConnectButtons() {
+  return (
+    <div className={styles.connectRow}>
+      {CONNECT_OPTIONS.map((c) => (
+        <a
+          key={c.slug}
+          className={styles.connectBtn}
+          href={`/api/integrations/zernio/${c.slug}`}
+        >
+          <span className={styles.connectDot} style={{ background: c.color }} />
+          Conectar {c.label}
+        </a>
+      ))}
+    </div>
+  );
 }
 
 export function ConversationsInbox({
@@ -88,6 +112,8 @@ export function ConversationsInbox({
     initialDetail,
   );
   const [loading, setLoading] = useState(false);
+  const [filter, setFilter] = useState<"all" | MessageChannel>("all");
+  const [query, setQuery] = useState("");
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [showConnect, setShowConnect] = useState(false);
@@ -95,13 +121,11 @@ export function ConversationsInbox({
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const active = convos.find((c) => c.id === activeId) ?? null;
+  const leadId = detail?.leadId ?? active?.leadId ?? null;
 
-  // Pin the message list to the latest (DOM only — no state, so no effect lint).
   useEffect(() => {
     const el = scrollRef.current;
-    if (el) {
-      el.scrollTop = el.scrollHeight;
-    }
+    if (el) el.scrollTop = el.scrollHeight;
   }, [detail?.messages.length, loading]);
 
   function selectConversation(id: string) {
@@ -121,7 +145,7 @@ export function ConversationsInbox({
     const value = text.trim();
     if (!value || !activeId) return;
     if (!canReply) {
-      setError("Conecta WhatsApp para responder desde Domika.");
+      setError("Conecta un canal para responder desde Domika.");
       return;
     }
     setError(null);
@@ -180,33 +204,93 @@ export function ConversationsInbox({
     );
   }
 
-  const leadId = detail?.leadId ?? active?.leadId ?? null;
+  const counts = {
+    all: convos.length,
+    whatsapp: convos.filter((c) => c.channel === "whatsapp").length,
+    messenger: convos.filter((c) => c.channel === "messenger").length,
+    instagram: convos.filter((c) => c.channel === "instagram").length,
+  };
+  const filtered = convos
+    .filter((c) => filter === "all" || c.channel === filter)
+    .filter(
+      (c) =>
+        query.trim() === "" ||
+        c.contactName.toLowerCase().includes(query.trim().toLowerCase()),
+    );
+
+  const phoneDigits = active ? active.contactPhone.replace(/[^\d]/g, "") : "";
+  const status = detail?.stageName ?? (leadId ? "Prospecto" : "Nuevo");
+
+  // Activity timeline built from the message flow.
+  const activity: Array<{ label: string; at: string }> = [];
+  if (detail && detail.messages[0]) {
+    activity.push({
+      label: "Conversación iniciada",
+      at: detail.messages[0].sent_at,
+    });
+    for (const m of detail.messages.slice(-5)) {
+      activity.push({
+        label: m.direction === "inbound" ? "Mensaje recibido" : "Mensaje enviado",
+        at: m.sent_at,
+      });
+    }
+  }
 
   return (
-    <div className={styles.inbox}>
+    <div className={styles.inbox3}>
+      {/* ── Conversation list ── */}
       <aside className={styles.inboxList}>
-        <div className={styles.inboxListHead}>
-          <span className={styles.eyebrow}>Entradas</span>
-          <div className={styles.inboxHeadRight}>
-            <span className={styles.inboxCount}>{convos.length}</span>
+        <div className={styles.channelTabs}>
+          {(
+            [
+              ["all", "Todos", "var(--app-green)", counts.all],
+              ["whatsapp", "", CHANNEL.whatsapp.color, counts.whatsapp],
+              ["messenger", "", CHANNEL.messenger.color, counts.messenger],
+              ["instagram", "", CHANNEL.instagram.color, counts.instagram],
+            ] as const
+          ).map(([key, label, color, n]) => (
             <button
+              key={key}
               type="button"
-              className={styles.connectPlus}
-              onClick={() => setShowConnect((v) => !v)}
-              title="Conectar un canal"
-              aria-expanded={showConnect}
+              className={
+                filter === key
+                  ? `${styles.channelTab} ${styles.channelTabActive}`
+                  : styles.channelTab
+              }
+              onClick={() => setFilter(key)}
+              title={key === "all" ? "Todos" : CHANNEL[key as MessageChannel].label}
             >
-              +
+              <span className={styles.channelTabDot} style={{ background: color }} />
+              {label ? <span>{label}</span> : null}
+              <span className={styles.channelTabCount}>{n}</span>
             </button>
-          </div>
+          ))}
+          <button
+            type="button"
+            className={styles.connectPlus}
+            onClick={() => setShowConnect((v) => !v)}
+            title="Conectar un canal"
+            aria-expanded={showConnect}
+          >
+            +
+          </button>
         </div>
         {showConnect ? (
           <div className={styles.connectMenu}>
             <ConnectButtons />
           </div>
         ) : null}
+        <div className={styles.inboxSearchRow}>
+          <input
+            className={styles.inboxSearch}
+            type="search"
+            placeholder="Buscar conversaciones…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
         <div className={styles.inboxListScroll}>
-          {convos.map((c) => (
+          {filtered.map((c) => (
             <button
               type="button"
               key={c.id}
@@ -237,14 +321,18 @@ export function ConversationsInbox({
                   {c.lastMessage ?? "Sin mensajes"}
                 </span>
               </span>
-              {!c.leadId ? (
-                <span className={styles.convNewDot} title="Sin prospecto" />
+              {c.unread > 0 ? (
+                <span className={styles.convUnread}>{c.unread}</span>
               ) : null}
             </button>
           ))}
+          {filtered.length === 0 ? (
+            <p className={styles.inboxListEmpty}>Sin conversaciones aquí.</p>
+          ) : null}
         </div>
       </aside>
 
+      {/* ── Chat ── */}
       <section className={styles.inboxChat}>
         {active ? (
           <>
@@ -257,26 +345,31 @@ export function ConversationsInbox({
                 />
               </span>
               <div className={styles.inboxChatWho}>
-                <strong>{active.contactName}</strong>
+                <strong>
+                  {active.contactName}{" "}
+                  <span
+                    className={styles.chatHeadChannelDot}
+                    style={{ background: CHANNEL[active.channel].color }}
+                  />
+                </strong>
                 <span className={styles.mutedText}>
-                  {CHANNEL[active.channel].label} · {active.contactPhone}
+                  {detail?.source
+                    ? `Origen: ${detail.source}`
+                    : `${CHANNEL[active.channel].label} · ${active.contactPhone}`}
                 </span>
               </div>
               {leadId ? (
-                <Link
-                  className={styles.secondaryButton}
-                  href={`/leads/${leadId}`}
-                >
-                  Ver prospecto
+                <Link className={styles.secondaryButton} href={`/leads/${leadId}`}>
+                  Ver contacto
                 </Link>
               ) : (
                 <button
                   type="button"
-                  className={styles.primaryButton}
+                  className={styles.secondaryButton}
                   onClick={convert}
                   disabled={pending}
                 >
-                  {pending ? "Convirtiendo…" : "Convertir en prospecto"}
+                  {pending ? "…" : "Ver contacto"}
                 </button>
               )}
             </header>
@@ -285,19 +378,37 @@ export function ConversationsInbox({
               {loading ? (
                 <p className={styles.mutedText}>Cargando conversación…</p>
               ) : detail && detail.messages.length > 0 ? (
-                detail.messages.map((m) => (
-                  <div
-                    key={m.id}
-                    className={`${styles.chatBubble} ${
-                      m.direction === "inbound"
-                        ? styles.chatInbound
-                        : styles.chatOutbound
-                    }`}
-                  >
-                    {m.body ? <p>{m.body}</p> : null}
-                    <time>{timeLabel(m.sent_at)}</time>
-                  </div>
-                ))
+                detail.messages.map((m, i) => {
+                  const prev = detail.messages[i - 1];
+                  const showDay =
+                    !prev ||
+                    new Date(prev.sent_at).toDateString() !==
+                      new Date(m.sent_at).toDateString();
+                  return (
+                    <div key={m.id}>
+                      {showDay ? (
+                        <div className={styles.daySep}>
+                          <span>{daySeparator(m.sent_at)}</span>
+                        </div>
+                      ) : null}
+                      <div
+                        className={`${styles.chatBubble} ${
+                          m.direction === "inbound"
+                            ? styles.chatInbound
+                            : styles.chatOutbound
+                        }`}
+                      >
+                        {m.body ? <p>{m.body}</p> : null}
+                        <time>
+                          {clockLabel(m.sent_at)}
+                          {m.direction === "outbound" ? (
+                            <span className={styles.chatReceipt}> ✓✓</span>
+                          ) : null}
+                        </time>
+                      </div>
+                    </div>
+                  );
+                })
               ) : (
                 <p className={styles.mutedText}>
                   Aún no hay mensajes en esta conversación.
@@ -308,24 +419,40 @@ export function ConversationsInbox({
             {error ? <p className={styles.formError}>{error}</p> : null}
 
             <form className={styles.inboxComposer} onSubmit={submitReply}>
-              <input
-                className={styles.textInput}
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                placeholder={
-                  canReply
-                    ? "Escribe un mensaje…"
-                    : "Conecta WhatsApp para responder"
-                }
-                disabled={!canReply || pending}
-              />
-              <button
-                className={styles.primaryButton}
-                type="submit"
-                disabled={!canReply || pending || text.trim().length === 0}
-              >
-                Enviar
-              </button>
+              <div className={styles.composerChannel}>
+                <span
+                  className={styles.convChannelDot}
+                  style={{ background: CHANNEL[active.channel].color }}
+                />
+                {CHANNEL[active.channel].label}
+              </div>
+              <div className={styles.composerBox}>
+                <input
+                  className={styles.composerInput}
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  placeholder={
+                    canReply ? "Escribe un mensaje…" : "Conecta un canal para responder"
+                  }
+                  disabled={!canReply || pending}
+                />
+                <div className={styles.composerToolbar}>
+                  <span className={styles.composerTools}>
+                    <span className={styles.composerTool}>😊</span>
+                    <span className={styles.composerTool}>📎</span>
+                    <span className={styles.composerTool}>📅</span>
+                    <span className={styles.composerTool}>🖼️</span>
+                  </span>
+                  <button
+                    className={styles.composerSend}
+                    type="submit"
+                    disabled={!canReply || pending || text.trim().length === 0}
+                    aria-label="Enviar"
+                  >
+                    ➤
+                  </button>
+                </div>
+              </div>
             </form>
           </>
         ) : (
@@ -336,6 +463,150 @@ export function ConversationsInbox({
           </div>
         )}
       </section>
+
+      {/* ── Contact context ── */}
+      {active ? (
+        <aside className={styles.inboxContext}>
+          <div className={styles.ctxHead}>
+            <span className={`${styles.convAvatar} ${styles.ctxAvatar}`}>
+              {initials(active.contactName)}
+            </span>
+            <strong className={styles.ctxName}>{active.contactName}</strong>
+            <span
+              className={
+                leadId ? styles.ctxStatus : `${styles.ctxStatus} ${styles.ctxStatusNew}`
+              }
+            >
+              {status}
+            </span>
+            <div className={styles.ctxQuick}>
+              {phoneDigits ? (
+                <a
+                  className={styles.ctxQuickBtn}
+                  href={`https://wa.me/${phoneDigits}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  💬
+                </a>
+              ) : null}
+              <a className={styles.ctxQuickBtn} href={`tel:${active.contactPhone}`}>
+                📞
+              </a>
+              {detail?.email ? (
+                <a className={styles.ctxQuickBtn} href={`mailto:${detail.email}`}>
+                  ✉️
+                </a>
+              ) : null}
+            </div>
+          </div>
+
+          <div className={styles.ctxSection}>
+            <span className={styles.eyebrow}>Sobre el contacto</span>
+            <div className={styles.ctxRow}>
+              <span>Teléfono</span>
+              <strong>{active.contactPhone}</strong>
+            </div>
+            <div className={styles.ctxRow}>
+              <span>Correo</span>
+              <strong>{detail?.email ?? "—"}</strong>
+            </div>
+            <div className={styles.ctxRow}>
+              <span>Origen</span>
+              <strong>{detail?.source ?? CHANNEL[active.channel].label}</strong>
+            </div>
+            <div className={styles.ctxRow}>
+              <span>Zona</span>
+              <strong>{detail?.zone ?? "—"}</strong>
+            </div>
+            <div className={styles.ctxRow}>
+              <span>Presupuesto</span>
+              <strong>{detail?.budgetLabel ?? "—"}</strong>
+            </div>
+            <div className={styles.ctxRow}>
+              <span>Asignado a</span>
+              <strong>{detail?.assigneeName ?? "—"}</strong>
+            </div>
+            {leadId ? (
+              <Link className={styles.ctxMore} href={`/leads/${leadId}`}>
+                Ver más información →
+              </Link>
+            ) : null}
+          </div>
+
+          <div className={styles.ctxSection}>
+            <span className={styles.eyebrow}>Acciones rápidas</span>
+            <div className={styles.ctxActions}>
+              {leadId ? (
+                <Link className={styles.ctxActionBtn} href={`/leads/${leadId}`}>
+                  👤 Ver prospecto
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  className={styles.ctxActionBtn}
+                  onClick={convert}
+                  disabled={pending}
+                >
+                  ➕ Agregar a flujo
+                </button>
+              )}
+              <Link
+                className={styles.ctxActionBtn}
+                href={leadId ? `/tasks?lead=${leadId}` : "/tasks"}
+              >
+                ✅ Crear tarea
+              </Link>
+              <Link
+                className={styles.ctxActionBtn}
+                href={leadId ? `/tasks?lead=${leadId}` : "/tasks"}
+              >
+                📅 Agendar visita
+              </Link>
+              <Link
+                className={styles.ctxActionBtn}
+                href={leadId ? `/leads/${leadId}` : "/leads"}
+              >
+                📇 Ver contacto
+              </Link>
+            </div>
+          </div>
+
+          <div className={styles.ctxSection}>
+            <div className={styles.ctxSectionHead}>
+              <span className={styles.eyebrow}>Notas</span>
+              {leadId ? (
+                <Link className={styles.ctxAddNote} href={`/leads/${leadId}`}>
+                  + Nueva nota
+                </Link>
+              ) : null}
+            </div>
+            {detail && detail.notes.length > 0 ? (
+              detail.notes.map((n) => (
+                <div className={styles.ctxNote} key={n.id}>
+                  <p>{n.body ?? n.title}</p>
+                  <time>{timeLabel(n.at)}</time>
+                </div>
+              ))
+            ) : (
+              <p className={styles.mutedText}>Sin notas todavía.</p>
+            )}
+          </div>
+
+          <div className={styles.ctxSection}>
+            <span className={styles.eyebrow}>Flujo de conversaciones</span>
+            <div className={styles.ctxActivity}>
+              {activity.map((a, i) => (
+                <div className={styles.ctxActivityItem} key={i}>
+                  <span className={styles.ctxActivityDot} />
+                  <span>{a.label}</span>
+                  <time>{clockLabel(a.at)}</time>
+                </div>
+              ))}
+            </div>
+          </div>
+        </aside>
+      ) : null}
     </div>
   );
 }

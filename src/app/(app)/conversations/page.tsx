@@ -30,7 +30,6 @@ export default async function ConversationsPage() {
     );
   }
 
-  // Hydrate the first conversation server-side so the chat is filled on load.
   const first = overview.conversations[0];
   let initialDetail: ConversationDetailView | null = null;
   if (first) {
@@ -48,16 +47,31 @@ export default async function ConversationsPage() {
         contactName: d.thread.contact_name ?? d.thread.contact_phone,
         contactPhone: d.thread.contact_phone,
         channel: d.thread.channel,
+        email: d.contact.email,
+        source: d.contact.source,
+        stageName: d.contact.stageName,
+        assigneeName: d.contact.assigneeName,
+        zone: d.contact.zone,
+        budgetLabel: d.contact.budgetLabel,
+        notes: d.contact.notes,
       };
     }
   }
 
   return (
-    <ConversationsInbox
-      conversations={overview.conversations}
-      canReply={overview.canReply}
-      initialActiveId={first?.id ?? null}
-      initialDetail={initialDetail}
-    />
+    <div className={styles.convPage}>
+      <div className={styles.convHeader}>
+        <h1 className={styles.dashTitle}>Conversaciones</h1>
+        <p className={styles.dashSubtitle}>
+          Centraliza tus chats y gestiona cada oportunidad.
+        </p>
+      </div>
+      <ConversationsInbox
+        conversations={overview.conversations}
+        canReply={overview.canReply}
+        initialActiveId={first?.id ?? null}
+        initialDetail={initialDetail}
+      />
+    </div>
   );
 }

@@ -16,6 +16,13 @@ export type LoadedMessage = {
   media: unknown;
 };
 
+export type ConversationNote = {
+  id: string;
+  title: string;
+  body: string | null;
+  at: string;
+};
+
 export type LoadConversationResult =
   | { ok: false }
   | {
@@ -25,6 +32,13 @@ export type LoadConversationResult =
       contactName: string;
       contactPhone: string;
       channel: MessageChannel;
+      email: string | null;
+      source: string | null;
+      stageName: string | null;
+      assigneeName: string | null;
+      zone: string | null;
+      budgetLabel: string | null;
+      notes: ConversationNote[];
     };
 
 export async function loadConversationAction(
@@ -47,6 +61,13 @@ export async function loadConversationAction(
     contactName: detail.thread.contact_name ?? detail.thread.contact_phone,
     contactPhone: detail.thread.contact_phone,
     channel: detail.thread.channel,
+    email: detail.contact.email,
+    source: detail.contact.source,
+    stageName: detail.contact.stageName,
+    assigneeName: detail.contact.assigneeName,
+    zone: detail.contact.zone,
+    budgetLabel: detail.contact.budgetLabel,
+    notes: detail.contact.notes,
   };
 }
 
