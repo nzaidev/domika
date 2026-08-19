@@ -3359,6 +3359,12 @@ a.propertyCard:hover {
   width: 10px;
 }
 
+.connectWaIcon {
+  align-items: center;
+  color: #25d366;
+  display: inline-flex;
+}
+
 .convUnread {
   align-items: center;
   background: var(--app-green);

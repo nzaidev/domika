@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import styles from "@/components/domika/domika-app.module.css";
+import { WhatsAppIcon } from "@/components/domika/icons";
 import type { MessageChannel } from "@/lib/database.types";
 import type { ConversationSummary } from "@/lib/domain/conversations";
 import {
@@ -19,12 +20,6 @@ const CHANNEL: Record<MessageChannel, { label: string; color: string }> = {
   instagram: { label: "Instagram", color: "#c13584" },
   messenger: { label: "Messenger", color: "#0084ff" },
 };
-
-const CONNECT_OPTIONS = [
-  { slug: "whatsapp", label: "WhatsApp", color: "#25d366" },
-  { slug: "instagram", label: "Instagram", color: "#c13584" },
-  { slug: "facebook", label: "Facebook", color: "#0084ff" },
-];
 
 export type ConversationDetailView = {
   messages: LoadedMessage[];
@@ -79,19 +74,17 @@ function daySeparator(value: string): string {
   return d.toLocaleDateString("es", { day: "numeric", month: "long" });
 }
 
+// WhatsApp is the only channel agents connect (existing number via coexistence).
 function ConnectButtons() {
   return (
     <div className={styles.connectRow}>
-      {CONNECT_OPTIONS.map((c) => (
-        <a
-          key={c.slug}
-          className={styles.connectBtn}
-          href={`/api/integrations/zernio/${c.slug}`}
-        >
-          <span className={styles.connectDot} style={{ background: c.color }} />
-          Conectar {c.label}
-        </a>
-      ))}
+      {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- API route: triggers a server-side OAuth redirect, needs a full navigation */}
+      <a className={styles.connectBtn} href="/api/integrations/zernio/whatsapp">
+        <span className={styles.connectWaIcon}>
+          <WhatsAppIcon />
+        </span>
+        Conectar WhatsApp
+      </a>
     </div>
   );
 }
