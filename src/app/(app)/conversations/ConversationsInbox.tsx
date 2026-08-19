@@ -81,7 +81,7 @@ function ConnectButtons() {
       {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- API route: triggers a server-side OAuth redirect, needs a full navigation */}
       <a className={styles.connectBtn} href="/api/integrations/zernio/whatsapp">
         <span className={styles.connectWaIcon}>
-          <WhatsAppIcon />
+          <WhatsAppIcon size={24} />
         </span>
         Conectar WhatsApp
       </a>
