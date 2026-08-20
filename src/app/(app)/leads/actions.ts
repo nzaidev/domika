@@ -1,7 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { changeLeadStage } from "@/lib/domain/lead-detail";
+import {
+  changeLeadStage,
+  removeLeadFromPipeline,
+  restoreLeadToPipeline,
+} from "@/lib/domain/lead-detail";
 import { createLead } from "@/lib/domain/leads";
 
 export type CreateLeadFormState = {
@@ -46,5 +50,36 @@ export async function moveLeadAction(
   revalidatePath(`/leads/${leadId}`);
   revalidatePath("/dashboard");
 
+  return { error: null };
+}
+
+function revalidateLead(leadId: string): void {
+  revalidatePath("/leads");
+  revalidatePath(`/leads/${leadId}`);
+  revalidatePath("/dashboard");
+}
+
+// Prospecto → contacto: off the board, still in the CRM.
+export async function removeFromPipelineAction(
+  leadId: string,
+): Promise<{ error: string | null }> {
+  const result = await removeLeadFromPipeline(leadId);
+  if (result.ok === false) {
+    return { error: result.error };
+  }
+  revalidateLead(leadId);
+  return { error: null };
+}
+
+// Contacto → prospecto: back onto the board.
+export async function restoreToPipelineAction(
+  leadId: string,
+  stageId?: string,
+): Promise<{ error: string | null }> {
+  const result = await restoreLeadToPipeline(leadId, stageId);
+  if (result.ok === false) {
+    return { error: result.error };
+  }
+  revalidateLead(leadId);
   return { error: null };
 }

@@ -224,6 +224,99 @@ export async function changeLeadStage(input: {
   return { ok: true };
 }
 
+export type PipelineMembershipResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+// A lead with no stage is a plain contact: still in the CRM, searchable and
+// reachable, just not an active opportunity on the board. Keeping it in `leads`
+// (rather than a separate table) preserves its history, tags and conversation
+// link, so moving back and forth is lossless.
+export async function removeLeadFromPipeline(
+  leadId: string,
+): Promise<PipelineMembershipResult> {
+  const session = await getSessionProfile();
+  if (session.status !== "authenticated") {
+    return { ok: false, error: "No hay una sesión activa con perfil." };
+  }
+  const organizationId = session.profile.organization_id;
+  const supabase = createAdminSupabaseClient();
+
+  const { data: lead } = await supabase
+    .from("leads")
+    .select("id, stage_id")
+    .eq("id", leadId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+  if (!lead) {
+    return { ok: false, error: "El prospecto no existe." };
+  }
+  if (lead.stage_id == null) {
+    return { ok: true };
+  }
+
+  const { error } = await supabase
+    .from("leads")
+    .update({ stage_id: null })
+    .eq("id", leadId)
+    .eq("organization_id", organizationId);
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  await supabase.from("lead_activities").insert({
+    organization_id: organizationId,
+    lead_id: leadId,
+    actor_profile_id: session.profile.id,
+    activity_type: "stage_change",
+    title: "Movido a contactos",
+    body: `Retirado del embudo por ${session.profile.full_name}.`,
+  });
+
+  return { ok: true };
+}
+
+// Puts a contact back on the board — at the given stage, or the first one.
+export async function restoreLeadToPipeline(
+  leadId: string,
+  stageId?: string,
+): Promise<PipelineMembershipResult> {
+  const session = await getSessionProfile();
+  if (session.status !== "authenticated") {
+    return { ok: false, error: "No hay una sesión activa con perfil." };
+  }
+  const organizationId = session.profile.organization_id;
+  const supabase = createAdminSupabaseClient();
+
+  const { data: lead } = await supabase
+    .from("leads")
+    .select("id, business_unit")
+    .eq("id", leadId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+  if (!lead) {
+    return { ok: false, error: "El contacto no existe." };
+  }
+
+  let targetStageId = stageId ?? null;
+  if (!targetStageId) {
+    const { data: firstStage } = await supabase
+      .from("pipeline_stages")
+      .select("id")
+      .eq("organization_id", organizationId)
+      .eq("business_unit", lead.business_unit)
+      .order("position", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    targetStageId = firstStage?.id ?? null;
+  }
+  if (!targetStageId) {
+    return { ok: false, error: "No hay etapas configuradas en el embudo." };
+  }
+
+  return changeLeadStage({ leadId, toStageId: targetStageId });
+}
+
 export type UpdateLeadInput = {
   fullName: string;
   phone?: string | null;

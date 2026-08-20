@@ -36,6 +36,8 @@ export type LeadsBoard =
       status: "ready";
       stages: LeadsBoardStage[];
       totalLeads: number;
+      /** Leads parked as plain contacts (no pipeline stage). */
+      contactsCount: number;
       members: BoardMember[];
       tags: LeadTagRow[];
     };
@@ -142,14 +144,21 @@ export async function getLeadsBoard(
   const byStage = new Map<string, BoardLead[]>(
     stages.map((stage) => [stage.id, []]),
   );
-  const unstaged: BoardLead[] = [];
+  // stage_id === null is deliberate: that's a contact, not a board card.
+  // A stage_id pointing at a deleted stage is an orphan and must stay visible.
+  const orphaned: BoardLead[] = [];
+  let contactsCount = 0;
 
   for (const lead of leads) {
-    const bucket = lead.stage_id ? byStage.get(lead.stage_id) : undefined;
+    if (lead.stage_id == null) {
+      contactsCount += 1;
+      continue;
+    }
+    const bucket = byStage.get(lead.stage_id);
     if (bucket) {
       bucket.push(lead);
     } else {
-      unstaged.push(lead);
+      orphaned.push(lead);
     }
   }
 
@@ -159,16 +168,77 @@ export async function getLeadsBoard(
   }));
 
   // Leads whose stage was deleted still need to be visible somewhere.
-  if (unstaged.length > 0 && boardStages.length > 0) {
-    boardStages[0].leads.unshift(...unstaged);
+  if (orphaned.length > 0 && boardStages.length > 0) {
+    boardStages[0].leads.unshift(...orphaned);
   }
 
   return {
     status: "ready",
     stages: boardStages,
-    totalLeads: leads.length,
+    totalLeads: leads.length - contactsCount,
+    contactsCount,
     members: (membersResult.data ?? []) as BoardMember[],
     tags: allTags,
+  };
+}
+
+export type ContactsList =
+  | { status: "not_configured" }
+  | { status: "unauthenticated" }
+  | { status: "profile_missing" }
+  | { status: "ready"; contacts: BoardLead[]; stages: PipelineStageRow[] };
+
+// Contacts = leads parked outside the funnel (stage_id is null). Same records,
+// same history — just not active opportunities.
+export async function getContacts(
+  filters: LeadFilters = {},
+): Promise<ContactsList> {
+  const session = await getSessionProfile();
+  if (session.status !== "authenticated") {
+    return { status: session.status };
+  }
+
+  const organizationId = session.profile.organization_id;
+  const supabase = createAdminSupabaseClient();
+
+  let query = supabase
+    .from("leads")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .is("stage_id", null);
+
+  if (filters.q) {
+    const term = `%${filters.q}%`;
+    query = query.or(
+      `full_name.ilike.${term},phone.ilike.${term},email.ilike.${term}`,
+    );
+  }
+  if (filters.source) {
+    query = query.eq("source", filters.source);
+  }
+  if (filters.assignedTo) {
+    query = query.eq("assigned_to", filters.assignedTo);
+  }
+  if (filters.businessUnit) {
+    query = query.eq("business_unit", filters.businessUnit);
+  }
+
+  const [contactsResult, stagesResult] = await Promise.all([
+    query.order("updated_at", { ascending: false }).limit(500),
+    supabase
+      .from("pipeline_stages")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .order("position", { ascending: true }),
+  ]);
+
+  const rows = contactsResult.data ?? [];
+  const tagMap = await tagsForLeads(rows.map((lead) => lead.id));
+
+  return {
+    status: "ready",
+    contacts: rows.map((lead) => ({ ...lead, tags: tagMap.get(lead.id) ?? [] })),
+    stages: stagesResult.data ?? [],
   };
 }
 

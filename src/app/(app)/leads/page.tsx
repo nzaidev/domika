@@ -3,7 +3,12 @@ import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/domika/AppWidgets";
 import styles from "@/components/domika/domika-app.module.css";
 import type { LeadRow } from "@/lib/database.types";
-import { getLeadsBoard, type LeadFilters } from "@/lib/domain/leads";
+import {
+  getContacts,
+  getLeadsBoard,
+  type LeadFilters,
+} from "@/lib/domain/leads";
+import { ContactsList } from "./ContactsList";
 import { CreateLeadPanel } from "./CreateLeadPanel";
 import { LeadsBoard } from "./LeadsBoard";
 
@@ -51,7 +56,11 @@ export default async function LeadsPage({
     stageId: firstParam(params.stage) || undefined,
   };
 
-  const board = await getLeadsBoard(filters);
+  const view = firstParam(params.view) === "contactos" ? "contactos" : "embudo";
+  const [board, contacts] = await Promise.all([
+    getLeadsBoard(filters),
+    view === "contactos" ? getContacts(filters) : Promise.resolve(null),
+  ]);
 
   if (board.status === "not_configured") {
     return (
@@ -186,13 +195,45 @@ export default async function LeadsPage({
         ) : null}
       </form>
 
-      <div className={styles.leadsBoardArea}>
-        <CreateLeadPanel />
-        <LeadsBoard
-          stages={board.stages}
-          highlightStageId={filters.stageId ?? null}
-        />
+      <div className={styles.viewTabs}>
+        <Link
+          className={
+            view === "embudo"
+              ? `${styles.viewTab} ${styles.viewTabActive}`
+              : styles.viewTab
+          }
+          href="/leads"
+        >
+          Embudo <span>{board.totalLeads}</span>
+        </Link>
+        <Link
+          className={
+            view === "contactos"
+              ? `${styles.viewTab} ${styles.viewTabActive}`
+              : styles.viewTab
+          }
+          href="/leads?view=contactos"
+        >
+          Contactos <span>{board.contactsCount}</span>
+        </Link>
       </div>
+
+      {view === "contactos" ? (
+        contacts && contacts.status === "ready" ? (
+          <ContactsList
+            contacts={contacts.contacts}
+            stages={contacts.stages}
+          />
+        ) : null
+      ) : (
+        <div className={styles.leadsBoardArea}>
+          <CreateLeadPanel />
+          <LeadsBoard
+            stages={board.stages}
+            highlightStageId={filters.stageId ?? null}
+          />
+        </div>
+      )}
     </div>
   );
 }

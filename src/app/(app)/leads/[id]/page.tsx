@@ -6,6 +6,7 @@ import type { LeadActivityRow } from "@/lib/database.types";
 import { getLeadDetail } from "@/lib/domain/lead-detail";
 import { getLeadInterests } from "@/lib/domain/interests";
 import { NoteForm, StageForm } from "./LeadDetailForms";
+import { PipelineMembership } from "./PipelineMembership";
 import { EditLeadForm } from "./EditLeadForm";
 import { LeadTags } from "./LeadTags";
 import { LeadInterests } from "./LeadInterests";
@@ -107,15 +108,28 @@ export default async function LeadDetailPage({
   return (
     <div className={styles.page}>
       <PageHeader
-        eyebrow={`Prospecto · ${currentStage?.name ?? "Sin etapa"}`}
+        eyebrow={
+          lead.stage_id == null
+            ? "Contacto · fuera del embudo"
+            : `Prospecto · ${currentStage?.name ?? "Sin etapa"}`
+        }
         title={lead.full_name}
         description={`Origen: ${lead.source}${
           lead.business_unit !== "general" ? ` · ${lead.business_unit}` : ""
         }`}
         actions={
-          <Link className={styles.secondaryButton} href="/leads">
-            ← Volver al embudo
-          </Link>
+          <>
+            <PipelineMembership
+              leadId={lead.id}
+              inPipeline={lead.stage_id != null}
+            />
+            <Link
+              className={styles.secondaryButton}
+              href={lead.stage_id == null ? "/leads?view=contactos" : "/leads"}
+            >
+              ← Volver
+            </Link>
+          </>
         }
       />
 
