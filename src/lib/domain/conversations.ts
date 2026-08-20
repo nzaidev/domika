@@ -76,6 +76,78 @@ export type ConversationDetail =
       window: ServiceWindow;
     };
 
+// Marker stored on `media` for messages pulled in by the coexistence history
+// import. Meta only opens the 24h service window on a LIVE inbound message, so
+// these must be excluded from window math or every reply fails with 131047
+// ("Re-engagement message").
+const HISTORY_SOURCE = "coexistence_history";
+
+function isHistoryMessage(media: unknown): boolean {
+  return (
+    media != null &&
+    !Array.isArray(media) &&
+    typeof media === "object" &&
+    (media as Record<string, unknown>).source === HISTORY_SOURCE
+  );
+}
+
+// Newest inbound that actually arrived live, i.e. the one Meta counts.
+async function lastLiveInboundAt(
+  supabase: ReturnType<typeof createAdminSupabaseClient>,
+  organizationId: string,
+  threadId: string,
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("whatsapp_messages")
+    .select("sent_at, media")
+    .eq("organization_id", organizationId)
+    .eq("thread_id", threadId)
+    .eq("direction", "inbound")
+    .order("sent_at", { ascending: false })
+    .limit(50);
+  const live = (data ?? []).find((m) => !isHistoryMessage(m.media));
+  return live?.sent_at ?? null;
+}
+
+// phone digits → newest LIVE inbound timestamp, across the org's threads.
+async function liveInboundByPhone(
+  supabase: ReturnType<typeof createAdminSupabaseClient>,
+  organizationId: string,
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  const { data: threads } = await supabase
+    .from("whatsapp_threads")
+    .select("id, contact_phone")
+    .eq("organization_id", organizationId)
+    .eq("channel", "whatsapp")
+    .limit(500);
+  if (!threads || threads.length === 0) return map;
+
+  const { data: msgs } = await supabase
+    .from("whatsapp_messages")
+    .select("thread_id, sent_at, media")
+    .eq("organization_id", organizationId)
+    .eq("direction", "inbound")
+    .in(
+      "thread_id",
+      threads.map((t) => t.id),
+    )
+    .order("sent_at", { ascending: false })
+    .limit(1000);
+
+  const newestLive = new Map<string, string>();
+  for (const m of msgs ?? []) {
+    if (isHistoryMessage(m.media)) continue;
+    if (!newestLive.has(m.thread_id)) newestLive.set(m.thread_id, m.sent_at);
+  }
+  for (const t of threads) {
+    const at = newestLive.get(t.id);
+    if (!at || !t.contact_phone) continue;
+    map.set(t.contact_phone.replace(/[^\d]/g, ""), at);
+  }
+  return map;
+}
+
 type ThreadStat = {
   body: string | null;
   direction: "inbound" | "outbound";
@@ -300,11 +372,13 @@ export async function getConversationDetail(
     }));
   }
 
-  // Last inbound drives the 24h free-reply window shown in the composer.
+  // Only a live inbound opens the 24h free-reply window — imported history
+  // doesn't count, so the composer reflects what Meta will actually accept.
   const lastInboundAt =
     [...(messages ?? [])]
       .reverse()
-      .find((m) => m.direction === "inbound")?.sent_at ?? null;
+      .find((m) => m.direction === "inbound" && !isHistoryMessage(m.media))
+      ?.sent_at ?? null;
 
   return {
     status: "ready",
@@ -382,17 +456,9 @@ export async function sendConversationReply(input: {
 
   // Meta only allows free-form replies inside the 24h service window; outside
   // it a paid template is required, so block rather than incur a charge.
-  const { data: lastInbound } = await supabase
-    .from("whatsapp_messages")
-    .select("sent_at")
-    .eq("organization_id", organizationId)
-    .eq("thread_id", thread.id)
-    .eq("direction", "inbound")
-    .order("sent_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const window = computeServiceWindow(lastInbound?.sent_at ?? null);
+  const window = computeServiceWindow(
+    await lastLiveInboundAt(supabase, organizationId, thread.id),
+  );
   if (!window.open) {
     return { ok: false, error: windowClosedMessage(window) };
   }
@@ -722,7 +788,9 @@ export async function syncZernioConversations(options?: {
         direction: msg.direction,
         external_message_id: msg.id,
         body: msg.body,
-        media: [],
+        // Tag history-imported messages so the 24h window logic can ignore
+        // them (Meta doesn't treat them as customer-initiated).
+        media: msg.fromHistory ? { source: HISTORY_SOURCE } : [],
         sent_at: msg.sentAt,
       });
       messageCount += 1;
@@ -810,9 +878,20 @@ export async function getWhatsappContacts(): Promise<WhatsappContact[]> {
     return [];
   }
   const contacts = await listZernioContacts(connection.external_account_id);
+
+  // Reachability is decided by LIVE inbound only. The provider's
+  // lastMessageReceivedAt reflects when history was imported, not when the
+  // customer actually wrote, so trusting it would mark closed windows as open
+  // and every send would fail with 131047.
+  const liveByPhone = await liveInboundByPhone(
+    supabase,
+    session.profile.organization_id,
+  );
+
   return contacts
     .map((c) => {
-      const window = computeServiceWindow(c.lastMessageAt);
+      const digits = c.phone.replace(/[^\d]/g, "");
+      const window = computeServiceWindow(liveByPhone.get(digits) ?? null);
       return {
         phone: c.phone,
         name: c.name,
@@ -874,27 +953,9 @@ export async function startWhatsappConversation(input: {
     .eq("contact_phone", normalized)
     .maybeSingle();
 
-  let lastInboundAt: string | null = null;
-  if (knownThread?.id) {
-    const { data: lastInbound } = await supabase
-      .from("whatsapp_messages")
-      .select("sent_at")
-      .eq("organization_id", organizationId)
-      .eq("thread_id", knownThread.id)
-      .eq("direction", "inbound")
-      .order("sent_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    lastInboundAt = lastInbound?.sent_at ?? null;
-  }
-  if (!lastInboundAt) {
-    const digits = normalized.replace(/[^\d]/g, "");
-    const contacts = await listZernioContacts(connection.external_account_id);
-    const match = contacts.find(
-      (c) => c.phone.replace(/[^\d]/g, "") === digits,
-    );
-    lastInboundAt = match?.lastMessageAt ?? null;
-  }
+  const lastInboundAt = knownThread?.id
+    ? await lastLiveInboundAt(supabase, organizationId, knownThread.id)
+    : null;
 
   const window = computeServiceWindow(lastInboundAt);
   if (!window.open) {

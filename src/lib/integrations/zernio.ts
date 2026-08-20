@@ -329,6 +329,12 @@ export type ZernioHistoryMessage = {
   direction: "inbound" | "outbound";
   body: string | null;
   sentAt: string;
+  /**
+   * True for messages imported by the coexistence history sync rather than
+   * received live. Meta does NOT count these as customer-initiated, so they
+   * must never be treated as opening the 24h service window.
+   */
+  fromHistory: boolean;
 };
 
 // Lists messages in a conversation. The accountId query param is required.
@@ -351,22 +357,26 @@ export async function listZernioMessages(
         ? data.data
         : [];
     return rows
-      .map((m) => ({
-        id: String(m.id ?? m._id ?? ""),
-        direction:
-          m.direction === "outgoing" || m.direction === "outbound"
-            ? ("outbound" as const)
-            : ("inbound" as const),
-        body:
-          (m.message as string) ??
-          (m.text as string) ??
-          (m.body as string) ??
-          null,
-        sentAt:
-          (m.sentAt as string) ??
-          (m.createdAt as string) ??
-          new Date().toISOString(),
-      }))
+      .map((m) => {
+        const meta = (m.metadata ?? {}) as Record<string, unknown>;
+        return {
+          id: String(m.id ?? m._id ?? ""),
+          direction:
+            m.direction === "outgoing" || m.direction === "outbound"
+              ? ("outbound" as const)
+              : ("inbound" as const),
+          body:
+            (m.message as string) ??
+            (m.text as string) ??
+            (m.body as string) ??
+            null,
+          sentAt:
+            (m.sentAt as string) ??
+            (m.createdAt as string) ??
+            new Date().toISOString(),
+          fromHistory: meta.source === "coexistence_history",
+        };
+      })
       .filter((m) => m.id !== "");
   } catch (error) {
     console.error("[zernio] list messages failed:", error);

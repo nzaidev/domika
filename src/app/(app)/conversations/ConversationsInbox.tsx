@@ -635,8 +635,10 @@ export function ConversationsInbox({
                         {m.body ? <p>{m.body}</p> : null}
                         <time>
                           {clockLabel(m.sent_at)}
+                          {/* Single tick = accepted by WhatsApp. We don't get
+                              delivery/read receipts yet, so never imply them. */}
                           {m.direction === "outbound" ? (
-                            <span className={styles.chatReceipt}> ✓✓</span>
+                            <span className={styles.chatReceipt}> ✓</span>
                           ) : null}
                         </time>
                       </div>
