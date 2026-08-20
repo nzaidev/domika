@@ -10,7 +10,6 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { normalizePhone } from "@/lib/phone";
 import {
   computeServiceWindow,
-  dailyInitiatedLimit,
   windowClosedMessage,
   type ServiceWindow,
 } from "@/lib/whatsapp/policy";
