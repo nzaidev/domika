@@ -223,10 +223,15 @@ export async function getConversationsOverview(): Promise<ConversationsOverview>
       .eq("organization_id", organizationId)
       .order("last_message_at", { ascending: false, nullsFirst: false })
       .limit(100),
+    // WhatsApp is the only channel agents connect, so the inbox's connected
+    // state must reflect *that* — a leftover row from a retired channel used to
+    // make a disconnected inbox look connected.
     supabase
       .from("channel_connections")
       .select("id, display_name, phone")
       .eq("organization_id", organizationId)
+      .eq("provider", "zernio")
+      .eq("platform", "whatsapp")
       .eq("status", "active")
       .limit(1),
   ]);
@@ -275,7 +280,8 @@ export async function getConversationsOverview(): Promise<ConversationsOverview>
           phone: connectionRow.phone,
         }
       : null,
-    canReply: hasZernioConfig(),
+    // Replying needs a live connection, not just provider credentials.
+    canReply: hasZernioConfig() && connectionRow != null,
   };
 }
 
@@ -830,8 +836,10 @@ export async function disconnectWhatsapp(): Promise<DisconnectResult> {
     .eq("status", "active")
     .maybeSingle();
 
+  // Already disconnected → the desired end state, so report success and let the
+  // UI refresh rather than showing an error for a no-op.
   if (!connection?.external_account_id) {
-    return { ok: false, error: "No hay una cuenta de WhatsApp conectada." };
+    return { ok: true };
   }
 
   const removed = await disconnectZernioAccount(connection.external_account_id);

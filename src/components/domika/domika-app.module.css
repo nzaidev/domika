@@ -3407,6 +3407,19 @@ a.propertyCard:hover {
   background: none;
 }
 
+.disconnectedBanner {
+  background: #fdf6ec;
+  border-bottom: 1px solid #f0d9b5;
+  color: #7a5320;
+  font-size: 12px;
+  line-height: 1.45;
+  padding: 10px 12px;
+}
+
+.disconnectedBanner strong {
+  display: block;
+}
+
 .connectedBox {
   display: flex;
   flex-direction: column;

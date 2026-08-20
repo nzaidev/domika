@@ -421,6 +421,13 @@ export function ConversationsInbox({
             +
           </button>
         </div>
+        {!connection ? (
+          <div className={styles.disconnectedBanner}>
+            <strong>WhatsApp desconectado.</strong> Tu historial sigue aquí,
+            pero no puedes enviar ni recibir mensajes hasta reconectar.
+            <ConnectButtons />
+          </div>
+        ) : null}
         {showConnect ? (
           <div className={styles.connectMenu}>
             {connection ? (
