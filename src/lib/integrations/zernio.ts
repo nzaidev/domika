@@ -342,10 +342,14 @@ export type ZernioHistoryMessage = {
 export async function listZernioMessages(
   conversationId: string,
   accountId: string,
+  limit = 100,
 ): Promise<ZernioHistoryMessage[]> {
   try {
+    // Defaults are oldest-first (sortOrderApplied: "asc") with 100 per page, so
+    // without sortOrder=desc a busy thread only ever syncs its oldest page and
+    // today's messages never arrive.
     const res = await zernioFetch(
-      `/v1/inbox/conversations/${encodeURIComponent(conversationId)}/messages?accountId=${encodeURIComponent(accountId)}`,
+      `/v1/inbox/conversations/${encodeURIComponent(conversationId)}/messages?accountId=${encodeURIComponent(accountId)}&sortOrder=desc&limit=${limit}`,
     );
     if (!res.ok) {
       return [];
@@ -377,7 +381,9 @@ export async function listZernioMessages(
           fromHistory: meta.source === "coexistence_history",
         };
       })
-      .filter((m) => m.id !== "");
+      .filter((m) => m.id !== "")
+      // Fetched newest-first; store chronologically.
+      .reverse();
   } catch (error) {
     console.error("[zernio] list messages failed:", error);
     return [];
@@ -411,7 +417,7 @@ export async function registerZernioWebhook(
       body: JSON.stringify({
         name: "Domika inbound",
         url: callbackUrl,
-        events: ["message.received"],
+        events: ["message.received", "message.sent"],
         secret,
         isActive: true,
       }),

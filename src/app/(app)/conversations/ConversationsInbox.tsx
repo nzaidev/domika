@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import styles from "@/components/domika/domika-app.module.css";
 import { WhatsAppIcon } from "@/components/domika/icons";
@@ -144,6 +145,7 @@ export function ConversationsInbox({
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropActive, setDropActive] = useState(false);
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -221,6 +223,37 @@ export function ConversationsInbox({
     if (activeId) convertById(activeId);
   }
 
+  // Re-render server data and refresh the open thread in place, so new messages
+  // appear without losing scroll position or a half-typed reply.
+  function refreshAfterSync() {
+    router.refresh();
+    if (activeId) {
+      loadConversationAction(activeId).then((res) => {
+        if (res.ok) setDetail(res);
+      });
+    }
+  }
+
+  // Keep the inbox current on its own. The provider webhook is the fast path;
+  // this poll is the safety net so a missed delivery can't strand messages in
+  // the provider. Skipped while the tab is hidden.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      syncConversationsAction()
+        .then((res) => {
+          if (res.threads > 0 || res.messages > 0) {
+            refreshAfterSync();
+          }
+        })
+        .catch(() => {
+          /* transient: the next tick retries */
+        });
+    }, 45_000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId, router]);
+
   // Pull existing WhatsApp chats from the provider into the inbox.
   function runSync() {
     if (syncing) return;
@@ -230,8 +263,8 @@ export function ConversationsInbox({
     syncConversationsAction()
       .then((res) => {
         if (res.threads > 0 || res.messages > 0) {
-          // Reload so the freshly synced threads render from the server.
-          window.location.reload();
+          refreshAfterSync();
+          setSyncing(false);
           return;
         }
         setSyncNote("Todo al día — no hay chats nuevos.");
