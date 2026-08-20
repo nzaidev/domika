@@ -4,6 +4,7 @@ import type { MessageChannel } from "@/lib/database.types";
 import { getSessionProfile } from "@/lib/auth/session";
 import {
   ZERNIO_CONNECT_SLUG,
+  ensureZernioProfile,
   getConnectUrl,
   hasZernioConfig,
 } from "@/lib/integrations/zernio";
@@ -38,8 +39,16 @@ export async function GET(
     return NextResponse.redirect(`${origin}/sign-in`);
   }
 
-  const profileId = process.env.ZERNIO_PROFILE_ID;
-  if (!hasZernioConfig() || !profileId) {
+  if (!hasZernioConfig()) {
+    return NextResponse.redirect(`${origin}/conversations?connect=unconfigured`);
+  }
+
+  // Connect into this org's own Zernio profile (falls back to the shared one so
+  // existing connections keep working).
+  const profileId =
+    (await ensureZernioProfile(session.profile.organization_id)) ??
+    process.env.ZERNIO_PROFILE_ID;
+  if (!profileId) {
     return NextResponse.redirect(`${origin}/conversations?connect=unconfigured`);
   }
 

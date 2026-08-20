@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import type { MessageChannel } from "@/lib/database.types";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import {
+  ensureZernioProfile,
   listZernioAccounts,
   registerZernioWebhook,
 } from "@/lib/integrations/zernio";
@@ -37,7 +38,9 @@ export async function GET(request: NextRequest) {
   // Meta redirects to Zernio's own callback, so the return leg to us carries no
   // account details. Read the truth from Zernio's API instead and reconcile the
   // account(s) the agent just connected into channel_connections.
-  const profileId = process.env.ZERNIO_PROFILE_ID;
+  // Same profile the connect leg used, so we only inspect this org's accounts.
+  const profileId =
+    (await ensureZernioProfile(state.org)) ?? process.env.ZERNIO_PROFILE_ID;
   if (!profileId) {
     return NextResponse.redirect(`${origin}/conversations?connect=misconfigured`);
   }

@@ -67,6 +67,44 @@ export async function getConnectUrl(
   }
 }
 
+// One Zernio profile per Domika organization, so each tenant's connected
+// accounts live in their own container instead of everything piling into the
+// shared "Default" profile (which also holds unrelated accounts from other
+// products on the same Zernio API key). Named deterministically so it can be
+// found again without storing the id — matches Zernio's own convention.
+// GET /v1/profiles → find by name, else POST /v1/profiles.
+export async function ensureZernioProfile(
+  organizationId: string,
+): Promise<string | null> {
+  const name = `domika:${organizationId}`;
+  try {
+    const res = await zernioFetch(`/v1/profiles`);
+    if (res.ok) {
+      const data = await res.json().catch(() => ({}));
+      const rows: Array<Record<string, unknown>> = Array.isArray(data?.profiles)
+        ? data.profiles
+        : [];
+      const found = rows.find((p) => p.name === name);
+      if (found?._id) {
+        return String(found._id);
+      }
+    }
+    const created = await zernioFetch(`/v1/profiles`, {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    });
+    if (!created.ok) {
+      console.error(`[zernio] create profile ${created.status}`);
+      return null;
+    }
+    const data = await created.json().catch(() => ({}));
+    return data?.profile?._id ? String(data.profile._id) : null;
+  } catch (error) {
+    console.error("[zernio] ensure profile failed:", error);
+    return null;
+  }
+}
+
 export type ZernioAccount = {
   id: string;
   platform: MessageChannelName;
@@ -135,16 +173,18 @@ export type ZernioConversation = {
   unreadCount: number;
 };
 
-// Lists the existing conversations for a profile. Zernio already holds the
-// number's chat history after coexistence sync — we pull it here so the inbox
-// isn't limited to whatever arrives on the webhook after connecting.
-// GET /v1/inbox/conversations?profileId=
+// Lists the existing conversations for ONE connected account. Zernio already
+// holds the number's chat history after coexistence sync — we pull it here so
+// the inbox isn't limited to whatever arrives on the webhook after connecting.
+// Scoped by accountId (not profileId) so a shared Zernio profile can never leak
+// another tenant's conversations into this org's inbox.
+// GET /v1/inbox/conversations?accountId=
 export async function listZernioConversations(
-  profileId: string,
+  accountId: string,
 ): Promise<ZernioConversation[]> {
   try {
     const res = await zernioFetch(
-      `/v1/inbox/conversations?profileId=${encodeURIComponent(profileId)}`,
+      `/v1/inbox/conversations?accountId=${encodeURIComponent(accountId)}`,
     );
     if (!res.ok) {
       console.error(`[zernio] conversations ${res.status}`);

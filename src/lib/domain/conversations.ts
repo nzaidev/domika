@@ -585,8 +585,7 @@ export async function syncZernioConversations(options?: {
   organizationId?: string;
   maxConversations?: number;
 }): Promise<{ threads: number; messages: number }> {
-  const profileId = process.env.ZERNIO_PROFILE_ID;
-  if (!profileId || !hasZernioConfig()) {
+  if (!hasZernioConfig()) {
     return { threads: 0, messages: 0 };
   }
   const supabase = createAdminSupabaseClient();
@@ -614,8 +613,12 @@ export async function syncZernioConversations(options?: {
     return { threads: 0, messages: 0 };
   }
 
-  const conversations = await listZernioConversations(profileId);
-  const scoped = conversations
+  // Pull per connected account so we only ever see this org's conversations.
+  const perAccount = await Promise.all(
+    [...acctMap.keys()].map((accountId) => listZernioConversations(accountId)),
+  );
+  const scoped = perAccount
+    .flat()
     .filter((c) => c.accountId && acctMap.has(c.accountId))
     .slice(0, options?.maxConversations ?? 100);
 
