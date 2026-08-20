@@ -69,6 +69,7 @@ export default async function ConversationsPage() {
       <ConversationsInbox
         conversations={overview.conversations}
         canReply={overview.canReply}
+        connection={overview.connection}
         initialActiveId={first?.id ?? null}
         initialDetail={initialDetail}
       />

@@ -3368,6 +3368,57 @@ a.propertyCard:hover {
   display: inline-flex;
 }
 
+.connectedBox {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 2px;
+}
+
+.connectedLabel {
+  align-items: center;
+  color: var(--app-ink);
+  display: flex;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 6px;
+}
+
+.connectedPhone {
+  color: var(--app-muted);
+  font-size: 12px;
+  padding-left: 24px;
+}
+
+.disconnectBtn {
+  background: #ffffff;
+  border: 1px solid var(--app-soft);
+  border-radius: 999px;
+  color: #c0392b;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: 4px;
+  padding: 8px 12px;
+}
+
+.disconnectBtn:hover:not(:disabled) {
+  background: #fdf1ef;
+  border-color: #c0392b;
+}
+
+.disconnectBtn:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.disconnectHint {
+  color: var(--app-muted);
+  font-size: 11px;
+  line-height: 1.4;
+  margin: 0;
+}
+
 .inboxToolbar {
   border-bottom: 1px solid var(--app-soft-2);
   display: flex;

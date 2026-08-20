@@ -9,6 +9,7 @@ import { getSessionProfile } from "@/lib/auth/session";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { normalizePhone } from "@/lib/phone";
 import {
+  disconnectZernioAccount,
   hasZernioConfig,
   listZernioContacts,
   listZernioConversations,
@@ -30,6 +31,11 @@ export type ConversationSummary = {
   unread: number;
 };
 
+export type ConnectedChannel = {
+  displayName: string | null;
+  phone: string | null;
+};
+
 export type ConversationsOverview =
   | { status: "not_configured" }
   | { status: "unauthenticated" }
@@ -38,6 +44,7 @@ export type ConversationsOverview =
       status: "ready";
       conversations: ConversationSummary[];
       connected: boolean;
+      connection: ConnectedChannel | null;
       canReply: boolean;
     };
 
@@ -140,7 +147,7 @@ export async function getConversationsOverview(): Promise<ConversationsOverview>
       .limit(100),
     supabase
       .from("channel_connections")
-      .select("id")
+      .select("id, display_name, phone")
       .eq("organization_id", organizationId)
       .eq("status", "active")
       .limit(1),
@@ -179,8 +186,19 @@ export async function getConversationsOverview(): Promise<ConversationsOverview>
     };
   });
 
-  const connected = (connectionsRes.data ?? []).length > 0;
-  return { status: "ready", conversations, connected, canReply: hasZernioConfig() };
+  const connectionRow = (connectionsRes.data ?? [])[0] ?? null;
+  return {
+    status: "ready",
+    conversations,
+    connected: connectionRow != null,
+    connection: connectionRow
+      ? {
+          displayName: connectionRow.display_name,
+          phone: connectionRow.phone,
+        }
+      : null,
+    canReply: hasZernioConfig(),
+  };
 }
 
 export async function getConversationDetail(
@@ -690,6 +708,49 @@ export async function syncZernioConversations(options?: {
   }
 
   return { threads: threadCount, messages: messageCount };
+}
+
+export type DisconnectResult = { ok: true } | { ok: false; error: string };
+
+// Disconnects this org's WhatsApp number. Chat history stays in Domika — only
+// the live connection is removed, so nothing the agent already received is lost.
+// Reconnecting means going through the WhatsApp signup again.
+export async function disconnectWhatsapp(): Promise<DisconnectResult> {
+  const session = await getSessionProfile();
+  if (session.status !== "authenticated") {
+    return { ok: false, error: "No hay una sesión activa con perfil." };
+  }
+  const organizationId = session.profile.organization_id;
+  const supabase = createAdminSupabaseClient();
+
+  const { data: connection } = await supabase
+    .from("channel_connections")
+    .select("id, external_account_id")
+    .eq("organization_id", organizationId)
+    .eq("provider", "zernio")
+    .eq("platform", "whatsapp")
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (!connection?.external_account_id) {
+    return { ok: false, error: "No hay una cuenta de WhatsApp conectada." };
+  }
+
+  const removed = await disconnectZernioAccount(connection.external_account_id);
+  if (removed.ok === false) {
+    return {
+      ok: false,
+      error: `No se pudo desconectar (${removed.error ?? "error"}).`,
+    };
+  }
+
+  await supabase
+    .from("channel_connections")
+    .delete()
+    .eq("id", connection.id)
+    .eq("organization_id", organizationId);
+
+  return { ok: true };
 }
 
 export type WhatsappContact = {

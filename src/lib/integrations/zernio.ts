@@ -218,6 +218,30 @@ export async function listZernioConversations(
   }
 }
 
+// Disconnects a connected account at the provider. DELETE /v1/accounts/{id}.
+// Treats "already gone" as success so a retry can't get stuck.
+export async function disconnectZernioAccount(
+  accountId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await zernioFetch(
+      `/v1/accounts/${encodeURIComponent(accountId)}`,
+      { method: "DELETE" },
+    );
+    if (res.ok || res.status === 404) {
+      return { ok: true };
+    }
+    const detail = (await res.text()).slice(0, 200);
+    console.error(`[zernio] disconnect ${res.status}: ${detail}`);
+    return { ok: false, error: `Zernio ${res.status}` };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "error",
+    };
+  }
+}
+
 export type ZernioContact = {
   phone: string;
   name: string | null;

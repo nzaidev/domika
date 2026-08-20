@@ -5,9 +5,13 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import styles from "@/components/domika/domika-app.module.css";
 import { WhatsAppIcon } from "@/components/domika/icons";
 import type { MessageChannel } from "@/lib/database.types";
-import type { ConversationSummary } from "@/lib/domain/conversations";
+import type {
+  ConnectedChannel,
+  ConversationSummary,
+} from "@/lib/domain/conversations";
 import {
   convertConversationAction,
+  disconnectWhatsappAction,
   loadContactsAction,
   loadConversationAction,
   searchMessagesAction,
@@ -97,11 +101,13 @@ function ConnectButtons() {
 export function ConversationsInbox({
   conversations,
   canReply,
+  connection,
   initialActiveId,
   initialDetail,
 }: {
   conversations: ConversationSummary[];
   canReply: boolean;
+  connection: ConnectedChannel | null;
   initialActiveId: string | null;
   initialDetail: ConversationDetailView | null;
 }) {
@@ -119,6 +125,8 @@ export function ConversationsInbox({
   const [showConnect, setShowConnect] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncNote, setSyncNote] = useState<string | null>(null);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [contacts, setContacts] = useState<PickerContact[] | null>(null);
   const [contactQuery, setContactQuery] = useState("");
@@ -224,6 +232,33 @@ export function ConversationsInbox({
       .catch(() => {
         setError("No se pudo sincronizar. Intenta de nuevo.");
         setSyncing(false);
+      });
+  }
+
+  // Disconnecting is hard to undo (reconnecting means redoing the WhatsApp
+  // signup), so it takes a second, explicit confirmation.
+  function runDisconnect() {
+    if (disconnecting) return;
+    if (!confirmDisconnect) {
+      setConfirmDisconnect(true);
+      return;
+    }
+    setDisconnecting(true);
+    setError(null);
+    disconnectWhatsappAction()
+      .then((res) => {
+        if (res.error) {
+          setError(res.error);
+          setDisconnecting(false);
+          setConfirmDisconnect(false);
+          return;
+        }
+        window.location.reload();
+      })
+      .catch(() => {
+        setError("No se pudo desconectar.");
+        setDisconnecting(false);
+        setConfirmDisconnect(false);
       });
   }
 
@@ -380,7 +415,41 @@ export function ConversationsInbox({
         </div>
         {showConnect ? (
           <div className={styles.connectMenu}>
-            <ConnectButtons />
+            {connection ? (
+              <div className={styles.connectedBox}>
+                <span className={styles.connectedLabel}>
+                  <span className={styles.connectWaIcon}>
+                    <WhatsAppIcon size={18} />
+                  </span>
+                  {connection.displayName ?? "WhatsApp"}
+                </span>
+                {connection.phone ? (
+                  <span className={styles.connectedPhone}>
+                    {connection.phone}
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  className={styles.disconnectBtn}
+                  onClick={runDisconnect}
+                  disabled={disconnecting}
+                >
+                  {disconnecting
+                    ? "Desconectando…"
+                    : confirmDisconnect
+                      ? "¿Seguro? Toca para confirmar"
+                      : "Desconectar WhatsApp"}
+                </button>
+                {confirmDisconnect && !disconnecting ? (
+                  <p className={styles.disconnectHint}>
+                    Tus chats guardados no se borran, pero dejarás de recibir y
+                    enviar mensajes hasta volver a conectar.
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <ConnectButtons />
+            )}
           </div>
         ) : null}
         <div className={styles.inboxSearchRow}>

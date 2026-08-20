@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import {
   convertConversationToLead,
+  disconnectWhatsapp,
   getConversationDetail,
   getWhatsappContacts,
   searchConversationThreadIds,
@@ -28,6 +29,17 @@ export async function syncConversationsAction(): Promise<{
 
 export async function loadContactsAction(): Promise<WhatsappContact[]> {
   return getWhatsappContacts();
+}
+
+export async function disconnectWhatsappAction(): Promise<{
+  error: string | null;
+}> {
+  const result = await disconnectWhatsapp();
+  if (result.ok === false) {
+    return { error: result.error };
+  }
+  revalidatePath("/conversations");
+  return { error: null };
 }
 
 export async function startConversationAction(
