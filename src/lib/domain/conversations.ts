@@ -347,7 +347,29 @@ export async function sendConversationReply(input: {
     return { ok: false, error: "Esta conversación no está vinculada a un canal." };
   }
 
-  const sent = await sendZernioMessage(thread.external_thread_id, text);
+  // Zernio requires the connected account id on send, so resolve the org's
+  // active connection for this thread's channel.
+  const { data: connection } = await supabase
+    .from("channel_connections")
+    .select("external_account_id")
+    .eq("organization_id", organizationId)
+    .eq("provider", "zernio")
+    .eq("platform", thread.channel)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (!connection?.external_account_id) {
+    return {
+      ok: false,
+      error: "Conecta WhatsApp para responder desde Domika.",
+    };
+  }
+
+  const sent = await sendZernioMessage(
+    thread.external_thread_id,
+    connection.external_account_id,
+    text,
+  );
   if (!sent.ok) {
     return { ok: false, error: `No se pudo enviar (${sent.error ?? "error"}).` };
   }

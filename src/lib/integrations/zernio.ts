@@ -229,10 +229,26 @@ export async function listZernioMessages(
 }
 
 // Registers our inbound webhook once. POST /v1/webhooks/settings.
+// Idempotent: every connect used to POST again, stacking duplicate webhooks for
+// the same URL (and duplicate inbound deliveries), so skip if it already exists.
 export async function registerZernioWebhook(
   callbackUrl: string,
   secret: string,
 ): Promise<boolean> {
+  try {
+    const existing = await zernioFetch(`/v1/webhooks/settings`);
+    if (existing.ok) {
+      const data = await existing.json().catch(() => ({}));
+      const rows: Array<Record<string, unknown>> = Array.isArray(data?.webhooks)
+        ? data.webhooks
+        : [];
+      if (rows.some((w) => w.url === callbackUrl && w.isActive !== false)) {
+        return true;
+      }
+    }
+  } catch {
+    // Fall through and attempt registration.
+  }
   try {
     const res = await zernioFetch(`/v1/webhooks/settings`, {
       method: "POST",
@@ -253,8 +269,12 @@ export async function registerZernioWebhook(
 
 // Sends a text reply into a conversation.
 // POST /v1/inbox/conversations/{id}/messages
+// Body must be { accountId, message } — accountId is required and the text
+// field is `message` (verified against the live API; a { type, text } body is
+// rejected with missing_required_field).
 export async function sendZernioMessage(
   conversationId: string,
+  accountId: string,
   text: string,
 ): Promise<{ ok: boolean; messageId?: string; error?: string }> {
   try {
@@ -262,12 +282,12 @@ export async function sendZernioMessage(
       `/v1/inbox/conversations/${encodeURIComponent(conversationId)}/messages`,
       {
         method: "POST",
-        // Send-body schema isn't fully documented; { type, text } is the
-        // standard shape. Confirmed against a live send before relying on it.
-        body: JSON.stringify({ type: "text", text }),
+        body: JSON.stringify({ accountId, message: text }),
       },
     );
     if (!res.ok) {
+      const detail = (await res.text()).slice(0, 200);
+      console.error(`[zernio] send ${res.status}: ${detail}`);
       return { ok: false, error: `Zernio ${res.status}` };
     }
     const data = await res.json().catch(() => ({}));
