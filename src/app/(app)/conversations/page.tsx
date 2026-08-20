@@ -54,6 +54,9 @@ export default async function ConversationsPage() {
         zone: d.contact.zone,
         budgetLabel: d.contact.budgetLabel,
         notes: d.contact.notes,
+        windowOpen: d.window.open,
+        windowHoursLeft: d.window.hoursLeft,
+        windowNeverMessaged: d.window.neverMessaged,
       };
     }
   }

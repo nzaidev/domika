@@ -22,7 +22,12 @@ import {
   type LoadedMessage,
 } from "./actions";
 
-type PickerContact = { phone: string; name: string | null };
+type PickerContact = {
+  phone: string;
+  name: string | null;
+  windowOpen: boolean;
+  hoursLeft: number;
+};
 
 const CHANNEL: Record<MessageChannel, { label: string; color: string }> = {
   whatsapp: { label: "WhatsApp", color: "#25d366" },
@@ -43,6 +48,9 @@ export type ConversationDetailView = {
   zone: string | null;
   budgetLabel: string | null;
   notes: ConversationNote[];
+  windowOpen: boolean;
+  windowHoursLeft: number;
+  windowNeverMessaged: boolean;
 };
 
 function initials(name: string): string {
@@ -651,16 +659,47 @@ export function ConversationsInbox({
                   style={{ background: CHANNEL[active.channel].color }}
                 />
                 {CHANNEL[active.channel].label}
+                {detail ? (
+                  <span
+                    className={
+                      detail.windowOpen
+                        ? styles.windowPillOpen
+                        : styles.windowPillClosed
+                    }
+                    title={
+                      detail.windowOpen
+                        ? "Respuestas gratuitas dentro de las 24 h"
+                        : "WhatsApp cerró la ventana de 24 h"
+                    }
+                  >
+                    {detail.windowOpen
+                      ? `Ventana abierta · ${detail.windowHoursLeft} h`
+                      : "Ventana cerrada"}
+                  </span>
+                ) : null}
               </div>
+              {detail && !detail.windowOpen ? (
+                <p className={styles.windowNotice}>
+                  {detail.windowNeverMessaged
+                    ? "Este contacto nunca te escribió. WhatsApp no permite escribir primero sin una plantilla aprobada (tiene costo)."
+                    : "Pasaron más de 24 h desde su último mensaje. Para reabrir la conversación necesitas una plantilla aprobada por Meta (tiene costo)."}
+                </p>
+              ) : null}
               <div className={styles.composerBox}>
                 <input
                   className={styles.composerInput}
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   placeholder={
-                    canReply ? "Escribe un mensaje…" : "Conecta un canal para responder"
+                    !canReply
+                      ? "Conecta un canal para responder"
+                      : detail && !detail.windowOpen
+                        ? "Ventana de 24 h cerrada"
+                        : "Escribe un mensaje…"
                   }
-                  disabled={!canReply || pending}
+                  disabled={
+                    !canReply || pending || (detail != null && !detail.windowOpen)
+                  }
                 />
                 <div className={styles.composerToolbar}>
                   <span className={styles.composerTools}>
@@ -672,7 +711,12 @@ export function ConversationsInbox({
                   <button
                     className={styles.composerSend}
                     type="submit"
-                    disabled={!canReply || pending || text.trim().length === 0}
+                    disabled={
+                      !canReply ||
+                      pending ||
+                      text.trim().length === 0 ||
+                      (detail != null && !detail.windowOpen)
+                    }
                     aria-label="Enviar"
                   >
                     ➤
@@ -898,9 +942,17 @@ export function ConversationsInbox({
                         key={c.phone}
                         className={styles.newChatRow}
                         onClick={() => setPickedContact(c)}
+                        disabled={!c.windowOpen}
+                        title={
+                          c.windowOpen
+                            ? `Puedes escribirle gratis (${c.hoursLeft} h restantes)`
+                            : "Fuera de la ventana de 24 h — requiere plantilla aprobada"
+                        }
                       >
                         <span>{c.name ?? c.phone}</span>
-                        <small>{c.phone}</small>
+                        <small>
+                          {c.windowOpen ? `${c.hoursLeft} h` : "cerrada"}
+                        </small>
                       </button>
                     ))
                 )}

@@ -86,6 +86,9 @@ export type LoadConversationResult =
       zone: string | null;
       budgetLabel: string | null;
       notes: ConversationNote[];
+      windowOpen: boolean;
+      windowHoursLeft: number;
+      windowNeverMessaged: boolean;
     };
 
 export async function loadConversationAction(
@@ -115,6 +118,9 @@ export async function loadConversationAction(
     zone: detail.contact.zone,
     budgetLabel: detail.contact.budgetLabel,
     notes: detail.contact.notes,
+    windowOpen: detail.window.open,
+    windowHoursLeft: detail.window.hoursLeft,
+    windowNeverMessaged: detail.window.neverMessaged,
   };
 }
 

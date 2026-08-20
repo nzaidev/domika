@@ -9,6 +9,12 @@ import { getSessionProfile } from "@/lib/auth/session";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { normalizePhone } from "@/lib/phone";
 import {
+  computeServiceWindow,
+  dailyInitiatedLimit,
+  windowClosedMessage,
+  type ServiceWindow,
+} from "@/lib/whatsapp/policy";
+import {
   disconnectZernioAccount,
   hasZernioConfig,
   listZernioContacts,
@@ -68,6 +74,7 @@ export type ConversationDetail =
       messages: WhatsappMessageRow[];
       canReply: boolean;
       contact: ConversationContact;
+      window: ServiceWindow;
     };
 
 type ThreadStat = {
@@ -294,12 +301,19 @@ export async function getConversationDetail(
     }));
   }
 
+  // Last inbound drives the 24h free-reply window shown in the composer.
+  const lastInboundAt =
+    [...(messages ?? [])]
+      .reverse()
+      .find((m) => m.direction === "inbound")?.sent_at ?? null;
+
   return {
     status: "ready",
     thread,
     messages: messages ?? [],
     canReply: hasZernioConfig(),
     contact,
+    window: computeServiceWindow(lastInboundAt),
   };
 }
 
@@ -365,6 +379,23 @@ export async function sendConversationReply(input: {
   }
   if (!thread.external_thread_id) {
     return { ok: false, error: "Esta conversación no está vinculada a un canal." };
+  }
+
+  // Meta only allows free-form replies inside the 24h service window; outside
+  // it a paid template is required, so block rather than incur a charge.
+  const { data: lastInbound } = await supabase
+    .from("whatsapp_messages")
+    .select("sent_at")
+    .eq("organization_id", organizationId)
+    .eq("thread_id", thread.id)
+    .eq("direction", "inbound")
+    .order("sent_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const window = computeServiceWindow(lastInbound?.sent_at ?? null);
+  if (!window.open) {
+    return { ok: false, error: windowClosedMessage(window) };
   }
 
   // Zernio requires the connected account id on send, so resolve the org's
@@ -756,6 +787,9 @@ export async function disconnectWhatsapp(): Promise<DisconnectResult> {
 export type WhatsappContact = {
   phone: string;
   name: string | null;
+  /** Free-form reachable now (they messaged within 24h). */
+  windowOpen: boolean;
+  hoursLeft: number;
 };
 
 // The agent's WhatsApp address book, for starting a new chat from Domika.
@@ -778,8 +812,21 @@ export async function getWhatsappContacts(): Promise<WhatsappContact[]> {
   }
   const contacts = await listZernioContacts(connection.external_account_id);
   return contacts
-    .map((c) => ({ phone: c.phone, name: c.name }))
-    .sort((a, b) => (a.name ?? a.phone).localeCompare(b.name ?? b.phone));
+    .map((c) => {
+      const window = computeServiceWindow(c.lastMessageAt);
+      return {
+        phone: c.phone,
+        name: c.name,
+        windowOpen: window.open,
+        hoursLeft: window.hoursLeft,
+      };
+    })
+    // Reachable-now contacts first: those are the ones an agent can actually
+    // message for free right now.
+    .sort((a, b) => {
+      if (a.windowOpen !== b.windowOpen) return a.windowOpen ? -1 : 1;
+      return (a.name ?? a.phone).localeCompare(b.name ?? b.phone);
+    });
 }
 
 export type StartConversationResult =
@@ -814,6 +861,45 @@ export async function startWhatsappConversation(input: {
     .maybeSingle();
   if (!connection?.external_account_id) {
     return { ok: false, error: "Conecta WhatsApp para iniciar un chat." };
+  }
+
+  // Opening a chat is only free (and only allowed without a paid template) if
+  // the contact messaged us within 24h. Resolve that server-side rather than
+  // trusting the client: prefer our own inbound history, then the provider's
+  // contact record.
+  const normalized = normalizePhone(phone) ?? phone;
+  const { data: knownThread } = await supabase
+    .from("whatsapp_threads")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq("contact_phone", normalized)
+    .maybeSingle();
+
+  let lastInboundAt: string | null = null;
+  if (knownThread?.id) {
+    const { data: lastInbound } = await supabase
+      .from("whatsapp_messages")
+      .select("sent_at")
+      .eq("organization_id", organizationId)
+      .eq("thread_id", knownThread.id)
+      .eq("direction", "inbound")
+      .order("sent_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    lastInboundAt = lastInbound?.sent_at ?? null;
+  }
+  if (!lastInboundAt) {
+    const digits = normalized.replace(/[^\d]/g, "");
+    const contacts = await listZernioContacts(connection.external_account_id);
+    const match = contacts.find(
+      (c) => c.phone.replace(/[^\d]/g, "") === digits,
+    );
+    lastInboundAt = match?.lastMessageAt ?? null;
+  }
+
+  const window = computeServiceWindow(lastInboundAt);
+  if (!window.open) {
+    return { ok: false, error: windowClosedMessage(window) };
   }
 
   const started = await startZernioConversation(
