@@ -4,9 +4,12 @@ import { revalidatePath } from "next/cache";
 import {
   convertConversationToLead,
   getConversationDetail,
+  getWhatsappContacts,
   searchConversationThreadIds,
   sendConversationReply,
+  startWhatsappConversation,
   syncMyConversations,
+  type WhatsappContact,
 } from "@/lib/domain/conversations";
 import type { MessageChannel } from "@/lib/database.types";
 
@@ -21,6 +24,23 @@ export async function syncConversationsAction(): Promise<{
   const result = await syncMyConversations();
   revalidatePath("/conversations");
   return result;
+}
+
+export async function loadContactsAction(): Promise<WhatsappContact[]> {
+  return getWhatsappContacts();
+}
+
+export async function startConversationAction(
+  phone: string,
+  text: string,
+  name: string | null,
+): Promise<{ error: string | null; threadId: string | null }> {
+  const result = await startWhatsappConversation({ phone, text, name });
+  if (result.ok === false) {
+    return { error: result.error, threadId: null };
+  }
+  revalidatePath("/conversations");
+  return { error: null, threadId: result.threadId };
 }
 
 export type LoadedMessage = {

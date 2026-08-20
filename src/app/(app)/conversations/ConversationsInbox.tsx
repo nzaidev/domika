@@ -8,13 +8,17 @@ import type { MessageChannel } from "@/lib/database.types";
 import type { ConversationSummary } from "@/lib/domain/conversations";
 import {
   convertConversationAction,
+  loadContactsAction,
   loadConversationAction,
   searchMessagesAction,
   sendReplyAction,
+  startConversationAction,
   syncConversationsAction,
   type ConversationNote,
   type LoadedMessage,
 } from "./actions";
+
+type PickerContact = { phone: string; name: string | null };
 
 const CHANNEL: Record<MessageChannel, { label: string; color: string }> = {
   whatsapp: { label: "WhatsApp", color: "#25d366" },
@@ -114,6 +118,13 @@ export function ConversationsInbox({
   const [error, setError] = useState<string | null>(null);
   const [showConnect, setShowConnect] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [syncNote, setSyncNote] = useState<string | null>(null);
+  const [showNew, setShowNew] = useState(false);
+  const [contacts, setContacts] = useState<PickerContact[] | null>(null);
+  const [contactQuery, setContactQuery] = useState("");
+  const [pickedContact, setPickedContact] = useState<PickerContact | null>(null);
+  const [newText, setNewText] = useState("");
+  const [starting, setStarting] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropActive, setDropActive] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -199,14 +210,62 @@ export function ConversationsInbox({
     if (syncing) return;
     setSyncing(true);
     setError(null);
+    setSyncNote(null);
     syncConversationsAction()
-      .then(() => {
-        // Reload so the freshly synced threads render from the server.
-        window.location.reload();
+      .then((res) => {
+        if (res.threads > 0 || res.messages > 0) {
+          // Reload so the freshly synced threads render from the server.
+          window.location.reload();
+          return;
+        }
+        setSyncNote("Todo al día — no hay chats nuevos.");
+        setSyncing(false);
       })
       .catch(() => {
         setError("No se pudo sincronizar. Intenta de nuevo.");
         setSyncing(false);
+      });
+  }
+
+  // Open the "new chat" picker, loading the WhatsApp address book once.
+  function openNewChat() {
+    setShowNew(true);
+    setError(null);
+    if (contacts === null) {
+      loadContactsAction()
+        .then(setContacts)
+        .catch(() => setContacts([]));
+    }
+  }
+
+  function closeNewChat() {
+    setShowNew(false);
+    setPickedContact(null);
+    setNewText("");
+    setContactQuery("");
+  }
+
+  function submitNewChat(event: React.FormEvent) {
+    event.preventDefault();
+    const phone = (pickedContact?.phone ?? contactQuery).trim();
+    const body = newText.trim();
+    if (!phone || !body || starting) return;
+    setStarting(true);
+    setError(null);
+    startConversationAction(phone, body, pickedContact?.name ?? null)
+      .then((res) => {
+        if (res.error) {
+          setError(res.error);
+          setStarting(false);
+          return;
+        }
+        window.location.href = res.threadId
+          ? `/conversations?c=${res.threadId}`
+          : "/conversations";
+      })
+      .catch(() => {
+        setError("No se pudo iniciar el chat.");
+        setStarting(false);
       });
   }
 
@@ -332,17 +391,28 @@ export function ConversationsInbox({
             value={query}
             onChange={(e) => onSearch(e.target.value)}
           />
+        </div>
+        <div className={styles.inboxToolbar}>
           <button
             type="button"
-            className={styles.syncBtn}
+            className={styles.syncBtnLabeled}
             onClick={runSync}
             disabled={syncing}
-            title="Sincronizar conversaciones desde WhatsApp"
-            aria-label="Sincronizar"
+            title="Traer tus chats de WhatsApp"
           >
             <span className={syncing ? styles.syncSpin : undefined}>↻</span>
+            {syncing ? "Sincronizando…" : "Sincronizar"}
+          </button>
+          <button
+            type="button"
+            className={styles.newChatBtn}
+            onClick={openNewChat}
+            title="Iniciar un chat nuevo"
+          >
+            ＋ Nueva conversación
           </button>
         </div>
+        {syncNote ? <p className={styles.syncNote}>{syncNote}</p> : null}
         <div className={styles.inboxListScroll}>
           {filtered.map((c) => (
             <button
@@ -693,6 +763,104 @@ export function ConversationsInbox({
             </div>
           </div>
         </aside>
+      ) : null}
+
+      {showNew ? (
+        <div
+          className={styles.newChatOverlay}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Nueva conversación"
+        >
+          <div className={styles.newChatCard}>
+            <div className={styles.newChatHead}>
+              <h3>Nueva conversación</h3>
+              <button
+                type="button"
+                className={styles.newChatClose}
+                onClick={closeNewChat}
+                aria-label="Cerrar"
+              >
+                ✕
+              </button>
+            </div>
+
+            <input
+              className={styles.newChatSearch}
+              type="search"
+              placeholder="Busca un contacto o escribe un número (+591…)"
+              value={pickedContact ? "" : contactQuery}
+              onChange={(e) => {
+                setContactQuery(e.target.value);
+                setPickedContact(null);
+              }}
+            />
+
+            {pickedContact ? (
+              <div className={styles.newChatPicked}>
+                <strong>{pickedContact.name ?? pickedContact.phone}</strong>
+                <span>{pickedContact.phone}</span>
+                <button type="button" onClick={() => setPickedContact(null)}>
+                  Cambiar
+                </button>
+              </div>
+            ) : (
+              <div className={styles.newChatList}>
+                {contacts === null ? (
+                  <p className={styles.mutedText}>Cargando contactos…</p>
+                ) : contacts.length === 0 ? (
+                  <p className={styles.mutedText}>
+                    No hay contactos sincronizados. Escribe el número completo.
+                  </p>
+                ) : (
+                  contacts
+                    .filter((c) => {
+                      const s = contactQuery.trim().toLowerCase();
+                      if (!s) return true;
+                      return (
+                        (c.name ?? "").toLowerCase().includes(s) ||
+                        c.phone.includes(s)
+                      );
+                    })
+                    .slice(0, 60)
+                    .map((c) => (
+                      <button
+                        type="button"
+                        key={c.phone}
+                        className={styles.newChatRow}
+                        onClick={() => setPickedContact(c)}
+                      >
+                        <span>{c.name ?? c.phone}</span>
+                        <small>{c.phone}</small>
+                      </button>
+                    ))
+                )}
+              </div>
+            )}
+
+            <form onSubmit={submitNewChat} className={styles.newChatForm}>
+              <textarea
+                className={styles.newChatText}
+                placeholder="Escribe el primer mensaje…"
+                value={newText}
+                onChange={(e) => setNewText(e.target.value)}
+                rows={3}
+              />
+              <button
+                type="submit"
+                className={styles.newChatSend}
+                disabled={
+                  starting ||
+                  !newText.trim() ||
+                  !(pickedContact?.phone ?? contactQuery).trim()
+                }
+              >
+                {starting ? "Enviando…" : "Enviar y abrir chat"}
+              </button>
+            </form>
+            {error ? <p className={styles.formError}>{error}</p> : null}
+          </div>
+        </div>
       ) : null}
     </div>
   );

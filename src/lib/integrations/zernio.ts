@@ -218,6 +218,88 @@ export async function listZernioConversations(
   }
 }
 
+export type ZernioContact = {
+  phone: string;
+  name: string | null;
+  lastMessageAt: string | null;
+};
+
+// The agent's WhatsApp contacts (synced by Meta coexistence at onboarding).
+// GET /v1/whatsapp/contacts?accountId=&limit=&skip=  → paginated 50 at a time.
+export async function listZernioContacts(
+  accountId: string,
+  max = 500,
+): Promise<ZernioContact[]> {
+  const out: ZernioContact[] = [];
+  let skip = 0;
+  try {
+    while (out.length < max) {
+      const res = await zernioFetch(
+        `/v1/whatsapp/contacts?accountId=${encodeURIComponent(accountId)}&limit=50&skip=${skip}`,
+      );
+      if (!res.ok) break;
+      const data = await res.json().catch(() => ({}));
+      const rows: Array<Record<string, unknown>> = Array.isArray(data?.contacts)
+        ? data.contacts
+        : [];
+      for (const c of rows) {
+        const phone = (c.phone as string) ?? (c.waId as string) ?? null;
+        if (!phone) continue;
+        const name = (c.name as string) ?? null;
+        out.push({
+          phone,
+          // Zernio falls back to the number as the name; treat that as unnamed.
+          name: name && name !== phone ? name : null,
+          lastMessageAt: (c.lastMessageReceivedAt as string) ?? null,
+        });
+      }
+      if (!data?.pagination?.hasMore || rows.length === 0) break;
+      skip += rows.length;
+    }
+  } catch (error) {
+    console.error("[zernio] list contacts failed:", error);
+  }
+  return out;
+}
+
+// Opens a new conversation by sending the first message to a phone number.
+// POST /v1/inbox/conversations { accountId, participantUsername, message }
+export async function startZernioConversation(
+  accountId: string,
+  phone: string,
+  message: string,
+): Promise<{ ok: boolean; conversationId?: string; error?: string }> {
+  try {
+    const res = await zernioFetch(`/v1/inbox/conversations`, {
+      method: "POST",
+      body: JSON.stringify({
+        accountId,
+        participantUsername: phone,
+        message,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const detail =
+        typeof data?.error === "string" ? data.error : `Zernio ${res.status}`;
+      console.error(`[zernio] start conversation ${res.status}: ${detail}`);
+      return { ok: false, error: detail };
+    }
+    const id =
+      data?.conversation?.id ??
+      data?.conversation?._id ??
+      data?.id ??
+      data?.conversationId ??
+      null;
+    return { ok: true, conversationId: id ? String(id) : undefined };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "error",
+    };
+  }
+}
+
 export type ZernioHistoryMessage = {
   id: string;
   direction: "inbound" | "outbound";

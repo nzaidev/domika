@@ -10,9 +10,11 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { normalizePhone } from "@/lib/phone";
 import {
   hasZernioConfig,
+  listZernioContacts,
   listZernioConversations,
   listZernioMessages,
   sendZernioMessage,
+  startZernioConversation,
   type ZernioInboundMessage,
 } from "@/lib/integrations/zernio";
 
@@ -688,6 +690,121 @@ export async function syncZernioConversations(options?: {
   }
 
   return { threads: threadCount, messages: messageCount };
+}
+
+export type WhatsappContact = {
+  phone: string;
+  name: string | null;
+};
+
+// The agent's WhatsApp address book, for starting a new chat from Domika.
+export async function getWhatsappContacts(): Promise<WhatsappContact[]> {
+  const session = await getSessionProfile();
+  if (session.status !== "authenticated" || !hasZernioConfig()) {
+    return [];
+  }
+  const supabase = createAdminSupabaseClient();
+  const { data: connection } = await supabase
+    .from("channel_connections")
+    .select("external_account_id")
+    .eq("organization_id", session.profile.organization_id)
+    .eq("provider", "zernio")
+    .eq("platform", "whatsapp")
+    .eq("status", "active")
+    .maybeSingle();
+  if (!connection?.external_account_id) {
+    return [];
+  }
+  const contacts = await listZernioContacts(connection.external_account_id);
+  return contacts
+    .map((c) => ({ phone: c.phone, name: c.name }))
+    .sort((a, b) => (a.name ?? a.phone).localeCompare(b.name ?? b.phone));
+}
+
+export type StartConversationResult =
+  | { ok: true; threadId: string | null }
+  | { ok: false; error: string };
+
+// Opens a brand-new WhatsApp chat with a number and records it locally.
+export async function startWhatsappConversation(input: {
+  phone: string;
+  text: string;
+  name?: string | null;
+}): Promise<StartConversationResult> {
+  const session = await getSessionProfile();
+  if (session.status !== "authenticated") {
+    return { ok: false, error: "No hay una sesión activa con perfil." };
+  }
+  const phone = input.phone.trim();
+  const text = input.text.trim();
+  if (!phone) return { ok: false, error: "Ingresa un número." };
+  if (!text) return { ok: false, error: "Escribe un mensaje." };
+
+  const organizationId = session.profile.organization_id;
+  const supabase = createAdminSupabaseClient();
+
+  const { data: connection } = await supabase
+    .from("channel_connections")
+    .select("external_account_id")
+    .eq("organization_id", organizationId)
+    .eq("provider", "zernio")
+    .eq("platform", "whatsapp")
+    .eq("status", "active")
+    .maybeSingle();
+  if (!connection?.external_account_id) {
+    return { ok: false, error: "Conecta WhatsApp para iniciar un chat." };
+  }
+
+  const started = await startZernioConversation(
+    connection.external_account_id,
+    phone,
+    text,
+  );
+  if (started.ok === false) {
+    return { ok: false, error: started.error ?? "No se pudo iniciar el chat." };
+  }
+
+  const nowIso = new Date().toISOString();
+  let threadId: string | null = null;
+
+  if (started.conversationId) {
+    const { data: existing } = await supabase
+      .from("whatsapp_threads")
+      .select("id")
+      .eq("organization_id", organizationId)
+      .eq("external_thread_id", started.conversationId)
+      .maybeSingle();
+    threadId = existing?.id ?? null;
+    if (!threadId) {
+      const { data: created } = await supabase
+        .from("whatsapp_threads")
+        .insert({
+          organization_id: organizationId,
+          channel: "whatsapp",
+          external_thread_id: started.conversationId,
+          contact_phone: normalizePhone(phone) ?? phone,
+          contact_name: input.name ?? null,
+          last_message_at: nowIso,
+          owner_profile_id: session.profile.id,
+        })
+        .select("id")
+        .single();
+      threadId = created?.id ?? null;
+    }
+    if (threadId) {
+      await supabase.from("whatsapp_messages").insert({
+        organization_id: organizationId,
+        thread_id: threadId,
+        direction: "outbound",
+        sender_profile_id: session.profile.id,
+        body: text,
+        media: [],
+        sent_at: nowIso,
+      });
+    }
+  }
+
+  return { ok: true, threadId };
 }
 
 // Session-scoped sync for the "Sincronizar" button: pulls the signed-in agent's

@@ -3368,6 +3368,215 @@ a.propertyCard:hover {
   display: inline-flex;
 }
 
+.inboxToolbar {
+  border-bottom: 1px solid var(--app-soft-2);
+  display: flex;
+  gap: 8px;
+  padding: 0 12px 10px;
+}
+
+.syncBtnLabeled,
+.newChatBtn {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--app-soft);
+  border-radius: 999px;
+  color: var(--app-ink);
+  cursor: pointer;
+  display: inline-flex;
+  flex: 1;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 6px;
+  justify-content: center;
+  padding: 8px 10px;
+  white-space: nowrap;
+}
+
+.syncBtnLabeled:hover:not(:disabled),
+.newChatBtn:hover {
+  border-color: var(--app-green);
+  color: var(--app-green);
+}
+
+.syncBtnLabeled:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+
+.newChatBtn {
+  background: var(--app-green);
+  border-color: var(--app-green);
+  color: #ffffff;
+}
+
+.newChatBtn:hover {
+  color: #ffffff;
+  filter: brightness(0.95);
+}
+
+.syncNote {
+  color: var(--app-muted);
+  font-size: 12px;
+  margin: 0;
+  padding: 0 12px 10px;
+}
+
+.newChatOverlay {
+  align-items: center;
+  background: rgba(15, 23, 32, 0.45);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 20px;
+  position: fixed;
+  z-index: 60;
+}
+
+.newChatCard {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 85vh;
+  max-width: 460px;
+  padding: 18px;
+  width: 100%;
+}
+
+.newChatHead {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.newChatHead h3 {
+  font-size: 16px;
+  margin: 0;
+}
+
+.newChatClose {
+  background: none;
+  border: none;
+  color: var(--app-muted);
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.newChatSearch {
+  background: var(--app-soft-2);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--app-ink);
+  font: inherit;
+  font-size: 13px;
+  padding: 9px 12px;
+  width: 100%;
+}
+
+.newChatSearch:focus {
+  background: #ffffff;
+  border-color: var(--app-soft);
+  outline: none;
+}
+
+.newChatList {
+  border: 1px solid var(--app-soft-2);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  max-height: 240px;
+  min-height: 90px;
+  overflow-y: auto;
+}
+
+.newChatRow {
+  align-items: baseline;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--app-soft-2);
+  cursor: pointer;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  padding: 9px 12px;
+  text-align: left;
+}
+
+.newChatRow:hover {
+  background: var(--app-soft-2);
+}
+
+.newChatRow small {
+  color: var(--app-muted);
+  font-size: 11px;
+}
+
+.newChatPicked {
+  align-items: center;
+  background: var(--app-soft-2);
+  border-radius: 10px;
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.newChatPicked span {
+  color: var(--app-muted);
+  font-size: 12px;
+}
+
+.newChatPicked button {
+  background: none;
+  border: none;
+  color: var(--app-green);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  margin-left: auto;
+}
+
+.newChatForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.newChatText {
+  background: var(--app-soft-2);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--app-ink);
+  font: inherit;
+  font-size: 13px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+
+.newChatText:focus {
+  background: #ffffff;
+  border-color: var(--app-soft);
+  outline: none;
+}
+
+.newChatSend {
+  background: var(--app-green);
+  border: none;
+  border-radius: 999px;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 16px;
+}
+
+.newChatSend:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
 .syncBtn {
   align-items: center;
   background: #ffffff;
